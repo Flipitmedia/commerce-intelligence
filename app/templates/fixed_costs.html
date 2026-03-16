@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Gastos Fijos — {{ store.name }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Gastos Fijos</h1>
+  <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn btn-primary">
+    <span class="material-symbols-outlined text-base">add</span> Agregar
+  </button>
+</div>
+
+<div class="card overflow-hidden p-0">
+  <table class="w-full">
+    <thead class="bg-gray-50 border-b border-gray-200">
+      <tr>
+        <th class="table-header">Periodo</th>
+        <th class="table-header">Categoria</th>
+        <th class="table-header">Descripcion</th>
+        <th class="table-header text-right">Monto</th>
+        <th class="table-header text-center">Recurrente</th>
+        <th class="table-header">Notas</th>
+        <th class="table-header w-24">Acciones</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for item in items %}
+      <tr class="hover:bg-gray-50">
+        <td class="table-cell font-mono text-xs">{{ item.periodo }}</td>
+        <td class="table-cell">
+          <span class="badge {% if item.recurring %}badge-ok{% else %}badge-warn{% endif %}">{{ item.category }}</span>
+        </td>
+        <td class="table-cell">{{ item.description }}</td>
+        <td class="table-cell text-right font-mono">{{ "{:,.0f}".format(item.amount) }}</td>
+        <td class="table-cell text-center">
+          {% if item.recurring %}
+          <span class="material-symbols-outlined text-emerald-500 text-base">check_circle</span>
+          {% else %}
+          <span class="material-symbols-outlined text-gray-300 text-base">circle</span>
+          {% endif %}
+        </td>
+        <td class="table-cell text-gray-500 text-xs">{{ item.notes }}</td>
+        <td class="table-cell">
+          <form method="POST" action="/admin/{{ store.id }}/fixed-costs/{{ item.id }}/delete?token={{ token }}"
+                class="inline" onsubmit="return confirm('Eliminar?')">
+            <button class="text-red-500 hover:text-red-700">
+              <span class="material-symbols-outlined text-base">delete</span>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="table-cell text-center text-gray-400 py-8">Sin gastos fijos</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Add Modal -->
+<div id="addModal" class="hidden fixed inset-0 bg-black/30 flex items-center justify-center z-50" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <h3 class="text-lg font-semibold mb-4">Agregar Gasto Fijo</h3>
+    <form method="POST" action="/admin/{{ store.id }}/fixed-costs?token={{ token }}" class="space-y-4">
+      <div>
+        <label class="label">Periodo (YYYY-MM)</label>
+        <input type="text" name="periodo" value="{{ store.periodo_activo }}" class="input" required pattern="\d{4}-\d{2}">
+      </div>
+      <div>
+        <label class="label">Categoria</label>
+        <select name="category" class="input">
+          {% for cat in categories %}
+          <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="label">Descripcion</label>
+        <input type="text" name="description" class="input" required>
+      </div>
+      <div>
+        <label class="label">Monto</label>
+        <input type="number" step="1" name="amount" class="input" required>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="checkbox" name="recurring" id="recurring" value="1" class="rounded">
+        <label for="recurring" class="text-sm text-gray-700">Recurrente (se aplica todos los meses desde este periodo)</label>
+      </div>
+      <div>
+        <label class="label">Notas</label>
+        <input type="text" name="notes" class="input">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="this.closest('#addModal').classList.add('hidden')" class="btn btn-secondary">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

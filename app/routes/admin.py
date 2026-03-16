@@ -1,12 +1,326 @@
 """
-admin.py — Admin UI: config, costos, gastos, facturas
-Placeholder — se implementa en Fase 3
+admin.py — Admin UI: config, costos, gastos, facturas, sync
+Server-rendered con Jinja2. Forms POST para CRUD.
 """
-from fastapi import APIRouter
+from pathlib import Path
+from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from app.database import query_one, query, execute
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
+
+# Categorias (mismo que Constants.gs)
+CATEGORIAS_FIJOS = ["Plataforma", "Software", "Salarios", "Alquiler", "Contabilidad", "Seguros", "Otros"]
+CATEGORIAS_VARIABLES = ["Packaging", "Envios", "Comisiones", "Marketing_otro", "Freelancers", "Otros"]
 
 
-@router.get("/{store_id}")
-def admin_home(store_id: str, token: str = ""):
-    return {"message": f"Admin UI para {store_id} — en construccion", "store": store_id}
+def get_store(store_id: str, token: str) -> dict:
+    store = query_one("SELECT * FROM stores WHERE id = ?", (store_id,))
+    if not store:
+        raise HTTPException(404, f"Store '{store_id}' no encontrada")
+    if store["api_token"] != token:
+        raise HTTPException(401, "Token invalido")
+    return store
+
+
+# ── Config ──────────────────────────────────────────────────────
+
+@router.get("/{store_id}", response_class=HTMLResponse)
+def admin_config(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    return templates.TemplateResponse("config.html", {
+        "request": request, "store": store, "token": token, "active_page": "config",
+    })
+
+
+@router.post("/{store_id}/config", response_class=HTMLResponse)
+def admin_config_save(
+    request: Request, store_id: str, token: str = "",
+    name: str = Form(""), currency: str = Form("CLP"), periodo_activo: str = Form(""),
+    tax_rate: float = Form(0.19), comision_pasarela: float = Form(0.0349),
+    comision_shopify: float = Form(0.01),
+    cogs_method: str = Form("porcentaje_fijo"), cogs_pct: float = Form(0.35),
+    fulfillment_cost: float = Form(1000), costo_envio_gratis: float = Form(4500),
+    target_mer: float = Form(3.0), target_margen: float = Form(0.40),
+    target_utilidad: float = Form(0.20), target_roas_meta: float = Form(4.0),
+    shopify_domain: str = Form(""), shopify_client_id: str = Form(""),
+    shopify_client_secret: str = Form(""),
+    meta_access_token: str = Form(""), meta_ad_account_id: str = Form(""),
+    primary_color: str = Form(""), accent_color: str = Form(""), logo_url: str = Form(""),
+):
+    store = get_store(store_id, token)
+    execute("""
+        UPDATE stores SET
+            name=?, currency=?, periodo_activo=?, tax_rate=?,
+            comision_pasarela=?, comision_shopify=?,
+            cogs_method=?, cogs_pct=?, fulfillment_cost=?, costo_envio_gratis=?,
+            target_mer=?, target_margen=?, target_utilidad=?, target_roas_meta=?,
+            shopify_domain=?, shopify_client_id=?, shopify_client_secret=?,
+            meta_access_token=?, meta_ad_account_id=?,
+            primary_color=?, accent_color=?, logo_url=?
+        WHERE id=?
+    """, (
+        name, currency, periodo_activo, tax_rate,
+        comision_pasarela, comision_shopify,
+        cogs_method, cogs_pct, fulfillment_cost, costo_envio_gratis,
+        target_mer, target_margen, target_utilidad, target_roas_meta,
+        shopify_domain, shopify_client_id, shopify_client_secret,
+        meta_access_token, meta_ad_account_id,
+        primary_color, accent_color, logo_url,
+        store_id,
+    ))
+    return RedirectResponse(f"/admin/{store_id}?token={token}", status_code=303)
+
+
+# ── Product Costs ───────────────────────────────────────────────
+
+@router.get("/{store_id}/costs", response_class=HTMLResponse)
+def admin_costs(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    items = query("SELECT * FROM product_costs WHERE store_id = ? ORDER BY sku, product", (store_id,))
+    return templates.TemplateResponse("costs.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "costs", "items": items,
+    })
+
+
+@router.post("/{store_id}/costs", response_class=HTMLResponse)
+def admin_costs_add(
+    store_id: str, token: str = "",
+    sku: str = Form(""), product: str = Form(""),
+    unit_cost: float = Form(0), notes: str = Form(""),
+):
+    get_store(store_id, token)
+    execute(
+        "INSERT INTO product_costs (store_id, sku, product, unit_cost, notes) VALUES (?,?,?,?,?)",
+        (store_id, sku, product, unit_cost, notes),
+    )
+    return RedirectResponse(f"/admin/{store_id}/costs?token={token}", status_code=303)
+
+
+@router.post("/{store_id}/costs/{item_id}/delete")
+def admin_costs_delete(store_id: str, item_id: int, token: str = ""):
+    get_store(store_id, token)
+    execute("DELETE FROM product_costs WHERE id = ? AND store_id = ?", (item_id, store_id))
+    return RedirectResponse(f"/admin/{store_id}/costs?token={token}", status_code=303)
+
+
+# ── Fixed Costs ─────────────────────────────────────────────────
+
+@router.get("/{store_id}/fixed-costs", response_class=HTMLResponse)
+def admin_fixed_costs(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    items = query(
+        "SELECT * FROM fixed_costs WHERE store_id = ? ORDER BY periodo DESC, category",
+        (store_id,),
+    )
+    return templates.TemplateResponse("fixed_costs.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "fixed_costs", "items": items, "categories": CATEGORIAS_FIJOS,
+    })
+
+
+@router.post("/{store_id}/fixed-costs", response_class=HTMLResponse)
+def admin_fixed_costs_add(
+    store_id: str, token: str = "",
+    periodo: str = Form(""), category: str = Form(""),
+    description: str = Form(""), amount: float = Form(0),
+    recurring: str = Form("0"), notes: str = Form(""),
+):
+    get_store(store_id, token)
+    rec = 1 if recurring == "1" else 0
+    execute(
+        "INSERT INTO fixed_costs (store_id, periodo, category, description, amount, recurring, notes) VALUES (?,?,?,?,?,?,?)",
+        (store_id, periodo, category, description, amount, rec, notes),
+    )
+    return RedirectResponse(f"/admin/{store_id}/fixed-costs?token={token}", status_code=303)
+
+
+@router.post("/{store_id}/fixed-costs/{item_id}/delete")
+def admin_fixed_costs_delete(store_id: str, item_id: int, token: str = ""):
+    get_store(store_id, token)
+    execute("DELETE FROM fixed_costs WHERE id = ? AND store_id = ?", (item_id, store_id))
+    return RedirectResponse(f"/admin/{store_id}/fixed-costs?token={token}", status_code=303)
+
+
+# ── Variable Costs ──────────────────────────────────────────────
+
+@router.get("/{store_id}/variable-costs", response_class=HTMLResponse)
+def admin_variable_costs(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    items = query(
+        "SELECT * FROM variable_costs WHERE store_id = ? ORDER BY date DESC",
+        (store_id,),
+    )
+    return templates.TemplateResponse("variable_costs.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "variable_costs", "items": items, "categories": CATEGORIAS_VARIABLES,
+    })
+
+
+@router.post("/{store_id}/variable-costs", response_class=HTMLResponse)
+def admin_variable_costs_add(
+    store_id: str, token: str = "",
+    date: str = Form(""), periodo: str = Form(""),
+    category: str = Form(""), description: str = Form(""),
+    amount: float = Form(0), notes: str = Form(""),
+):
+    get_store(store_id, token)
+    execute(
+        "INSERT INTO variable_costs (store_id, date, periodo, category, description, amount, notes) VALUES (?,?,?,?,?,?,?)",
+        (store_id, date, periodo, category, description, amount, notes),
+    )
+    return RedirectResponse(f"/admin/{store_id}/variable-costs?token={token}", status_code=303)
+
+
+@router.post("/{store_id}/variable-costs/{item_id}/delete")
+def admin_variable_costs_delete(store_id: str, item_id: int, token: str = ""):
+    get_store(store_id, token)
+    execute("DELETE FROM variable_costs WHERE id = ? AND store_id = ?", (item_id, store_id))
+    return RedirectResponse(f"/admin/{store_id}/variable-costs?token={token}", status_code=303)
+
+
+# ── Purchase Invoices ───────────────────────────────────────────
+
+@router.get("/{store_id}/invoices", response_class=HTMLResponse)
+def admin_invoices(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    items = query(
+        "SELECT * FROM purchase_invoices WHERE store_id = ? ORDER BY date DESC",
+        (store_id,),
+    )
+    return templates.TemplateResponse("invoices.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "invoices", "items": items,
+    })
+
+
+@router.post("/{store_id}/invoices", response_class=HTMLResponse)
+def admin_invoices_add(
+    store_id: str, token: str = "",
+    date: str = Form(""), periodo: str = Form(""),
+    supplier: str = Form(""), description: str = Form(""),
+    net_amount: float = Form(0), iva: float = Form(0),
+    total_amount: float = Form(0), invoice_number: str = Form(""),
+    notes: str = Form(""),
+):
+    get_store(store_id, token)
+    execute(
+        """INSERT INTO purchase_invoices
+        (store_id, date, periodo, supplier, description, net_amount, iva, total_amount, invoice_number, notes)
+        VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        (store_id, date, periodo, supplier, description, net_amount, iva, total_amount, invoice_number, notes),
+    )
+    return RedirectResponse(f"/admin/{store_id}/invoices?token={token}", status_code=303)
+
+
+@router.post("/{store_id}/invoices/{item_id}/delete")
+def admin_invoices_delete(store_id: str, item_id: int, token: str = ""):
+    get_store(store_id, token)
+    execute("DELETE FROM purchase_invoices WHERE id = ? AND store_id = ?", (item_id, store_id))
+    return RedirectResponse(f"/admin/{store_id}/invoices?token={token}", status_code=303)
+
+
+# ── Sync ────────────────────────────────────────────────────────
+
+def get_db_stats(store_id: str) -> dict:
+    orders = query_one("SELECT COUNT(*) as c FROM orders WHERE store_id=?", (store_id,))
+    lines = query_one("SELECT COUNT(*) as c FROM order_lines WHERE store_id=?", (store_id,))
+    meta = query_one("SELECT COUNT(*) as c FROM meta_insights WHERE store_id=?", (store_id,))
+    periodos = query_one(
+        "SELECT COUNT(DISTINCT periodo) as c FROM orders WHERE store_id=?", (store_id,)
+    )
+    return {
+        "orders": orders["c"] if orders else 0,
+        "order_lines": lines["c"] if lines else 0,
+        "meta_insights": meta["c"] if meta else 0,
+        "periodos": periodos["c"] if periodos else 0,
+    }
+
+
+@router.get("/{store_id}/sync", response_class=HTMLResponse)
+def admin_sync(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    return templates.TemplateResponse("sync.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "sync", "stats": get_db_stats(store_id),
+        "result": None, "error": None,
+    })
+
+
+@router.post("/{store_id}/sync/shopify", response_class=HTMLResponse)
+def admin_sync_shopify(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    try:
+        from app.sync_shopify import sync_shopify_periodo
+        result = sync_shopify_periodo(store)
+    except Exception as e:
+        return templates.TemplateResponse("sync.html", {
+            "request": request, "store": store, "token": token,
+            "active_page": "sync", "stats": get_db_stats(store_id),
+            "result": None, "error": str(e),
+        })
+    return templates.TemplateResponse("sync.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "sync", "stats": get_db_stats(store_id),
+        "result": {"shopify": result}, "error": None,
+    })
+
+
+@router.post("/{store_id}/sync/shopify-full", response_class=HTMLResponse)
+def admin_sync_shopify_full(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    try:
+        from app.sync_shopify import sync_shopify_full
+        result = sync_shopify_full(store)
+    except Exception as e:
+        return templates.TemplateResponse("sync.html", {
+            "request": request, "store": store, "token": token,
+            "active_page": "sync", "stats": get_db_stats(store_id),
+            "result": None, "error": str(e),
+        })
+    return templates.TemplateResponse("sync.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "sync", "stats": get_db_stats(store_id),
+        "result": {"shopify_full": result}, "error": None,
+    })
+
+
+@router.post("/{store_id}/sync/meta", response_class=HTMLResponse)
+def admin_sync_meta(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    try:
+        from app.sync_meta import sync_meta_periodo
+        result = sync_meta_periodo(store)
+    except Exception as e:
+        return templates.TemplateResponse("sync.html", {
+            "request": request, "store": store, "token": token,
+            "active_page": "sync", "stats": get_db_stats(store_id),
+            "result": None, "error": str(e),
+        })
+    return templates.TemplateResponse("sync.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "sync", "stats": get_db_stats(store_id),
+        "result": {"meta": result}, "error": None,
+    })
+
+
+@router.post("/{store_id}/sync/meta-full", response_class=HTMLResponse)
+def admin_sync_meta_full(request: Request, store_id: str, token: str = ""):
+    store = get_store(store_id, token)
+    try:
+        from app.sync_meta import sync_meta_full
+        result = sync_meta_full(store)
+    except Exception as e:
+        return templates.TemplateResponse("sync.html", {
+            "request": request, "store": store, "token": token,
+            "active_page": "sync", "stats": get_db_stats(store_id),
+            "result": None, "error": str(e),
+        })
+    return templates.TemplateResponse("sync.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "sync", "stats": get_db_stats(store_id),
+        "result": {"meta_full": result}, "error": None,
+    })

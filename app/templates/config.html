@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Config — {{ store.name }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Configuracion</h1>
+  <span class="badge badge-ok">Periodo: {{ store.periodo_activo }}</span>
+</div>
+
+<form method="POST" action="/admin/{{ store.id }}/config?token={{ token }}" class="space-y-6">
+  <!-- General -->
+  <div class="card">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">General</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="label">Nombre de la tienda</label>
+        <input type="text" name="name" value="{{ store.name }}" class="input">
+      </div>
+      <div>
+        <label class="label">Moneda</label>
+        <select name="currency" class="input">
+          {% for c in ['CLP','USD','MXN','ARS','COP','EUR','BRL'] %}
+          <option value="{{ c }}" {% if store.currency == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="label">Periodo activo (YYYY-MM)</label>
+        <input type="text" name="periodo_activo" value="{{ store.periodo_activo }}" class="input" pattern="\d{4}-\d{2}">
+      </div>
+    </div>
+  </div>
+
+  <!-- Tasas e impuestos -->
+  <div class="card">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Tasas e Impuestos</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="label">Tasa IVA</label>
+        <input type="number" step="0.01" name="tax_rate" value="{{ store.tax_rate }}" class="input">
+      </div>
+      <div>
+        <label class="label">Comision pasarela (%)</label>
+        <input type="number" step="0.0001" name="comision_pasarela" value="{{ store.comision_pasarela }}" class="input">
+      </div>
+      <div>
+        <label class="label">Comision Shopify (%)</label>
+        <input type="number" step="0.001" name="comision_shopify" value="{{ store.comision_shopify }}" class="input">
+      </div>
+    </div>
+  </div>
+
+  <!-- Costos -->
+  <div class="card">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Costos</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <label class="label">Metodo COGS</label>
+        <select name="cogs_method" class="input">
+          <option value="porcentaje_fijo" {% if store.cogs_method == 'porcentaje_fijo' %}selected{% endif %}>Porcentaje fijo</option>
+          <option value="por_producto" {% if store.cogs_method == 'por_producto' %}selected{% endif %}>Por producto</option>
+        </select>
+      </div>
+      <div>
+        <label class="label">COGS %</label>
+        <input type="number" step="0.01" name="cogs_pct" value="{{ store.cogs_pct }}" class="input">
+      </div>
+      <div>
+        <label class="label">Costo picking/packing</label>
+        <input type="number" step="1" name="fulfillment_cost" value="{{ store.fulfillment_cost }}" class="input">
+      </div>
+      <div>
+        <label class="label">Costo envio gratis</label>
+        <input type="number" step="1" name="costo_envio_gratis" value="{{ store.costo_envio_gratis }}" class="input">
+      </div>
+    </div>
+  </div>
+
+  <!-- Targets -->
+  <div class="card">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Targets</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div>
+        <label class="label">Target MER</label>
+        <input type="number" step="0.1" name="target_mer" value="{{ store.target_mer }}" class="input">
+      </div>
+      <div>
+        <label class="label">Target Margen %</label>
+        <input type="number" step="0.01" name="target_margen" value="{{ store.target_margen }}" class="input">
+      </div>
+      <div>
+        <label class="label">Target Utilidad %</label>
+        <input type="number" step="0.01" name="target_utilidad" value="{{ store.target_utilidad }}" class="input">
+      </div>
+      <div>
+        <label class="label">Target ROAS Meta</label>
+        <input type="number" step="0.1" name="target_roas_meta" value="{{ store.target_roas_meta }}" class="input">
+      </div>
+    </div>
+  </div>
+
+  <!-- API Credentials -->
+  <div class="card">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Shopify API</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="label">Dominio (xxx.myshopify.com)</label>
+        <input type="text" name="shopify_domain" value="{{ store.shopify_domain }}" class="input">
+      </div>
+      <div>
+        <label class="label">Client ID (o Access Token shpat_)</label>
+        <input type="text" name="shopify_client_id" value="{{ store.shopify_client_id }}" class="input">
+      </div>
+      <div>
+        <label class="label">Client Secret</label>
+        <input type="password" name="shopify_client_secret" value="{{ store.shopify_client_secret }}" class="input">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Meta Marketing API</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="label">Access Token</label>
+        <input type="password" name="meta_access_token" value="{{ store.meta_access_token }}" class="input">
+      </div>
+      <div>
+        <label class="label">Ad Account ID (act_XXXXX)</label>
+        <input type="text" name="meta_ad_account_id" value="{{ store.meta_ad_account_id }}" class="input">
+      </div>
+    </div>
+  </div>
+
+  <!-- Branding -->
+  <div class="card">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Branding</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="label">Color primario (hex)</label>
+        <input type="text" name="primary_color" value="{{ store.primary_color }}" class="input">
+      </div>
+      <div>
+        <label class="label">Color secundario (hex)</label>
+        <input type="text" name="accent_color" value="{{ store.accent_color }}" class="input">
+      </div>
+      <div>
+        <label class="label">URL del logo</label>
+        <input type="url" name="logo_url" value="{{ store.logo_url }}" class="input">
+      </div>
+    </div>
+  </div>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary">
+      <span class="material-symbols-outlined text-base">save</span> Guardar cambios
+    </button>
+  </div>
+</form>
+{% endblock %}

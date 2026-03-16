@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Sync — {{ store.name }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Sincronizacion</h1>
+  <span class="badge badge-ok">Periodo: {{ store.periodo_activo }}</span>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <!-- Shopify -->
+  <div class="card">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+        <span class="material-symbols-outlined text-green-600">shopping_cart</span>
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold">Shopify</h2>
+        <p class="text-xs text-gray-500">{{ store.shopify_domain or 'No configurado' }}</p>
+      </div>
+    </div>
+
+    {% if store.shopify_domain and store.shopify_client_id %}
+    <div class="space-y-3">
+      <form method="POST" action="/admin/{{ store.id }}/sync/shopify?token={{ token }}">
+        <button type="submit" class="btn btn-primary w-full justify-center" id="syncShopifyBtn"
+                onclick="this.disabled=true;this.innerHTML='<span class=\'material-symbols-outlined text-base animate-spin\'>sync</span> Sincronizando...'">
+          <span class="material-symbols-outlined text-base">sync</span> Sync Periodo Activo
+        </button>
+      </form>
+      <form method="POST" action="/admin/{{ store.id }}/sync/shopify-full?token={{ token }}">
+        <button type="submit" class="btn btn-secondary w-full justify-center"
+                onclick="this.disabled=true;this.textContent='Sincronizando 12 meses...'">
+          <span class="material-symbols-outlined text-base">history</span> Sync Completo (12 meses)
+        </button>
+      </form>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-400">Configura las credenciales Shopify en la seccion Config.</p>
+    {% endif %}
+  </div>
+
+  <!-- Meta -->
+  <div class="card">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+        <span class="material-symbols-outlined text-blue-600">campaign</span>
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold">Meta Ads</h2>
+        <p class="text-xs text-gray-500">{{ store.meta_ad_account_id or 'No configurado' }}</p>
+      </div>
+    </div>
+
+    {% if store.meta_access_token and store.meta_ad_account_id %}
+    <div class="space-y-3">
+      <form method="POST" action="/admin/{{ store.id }}/sync/meta?token={{ token }}">
+        <button type="submit" class="btn btn-primary w-full justify-center"
+                onclick="this.disabled=true;this.innerHTML='<span class=\'material-symbols-outlined text-base animate-spin\'>sync</span> Sincronizando...'">
+          <span class="material-symbols-outlined text-base">sync</span> Sync Periodo Activo
+        </button>
+      </form>
+      <form method="POST" action="/admin/{{ store.id }}/sync/meta-full?token={{ token }}">
+        <button type="submit" class="btn btn-secondary w-full justify-center"
+                onclick="this.disabled=true;this.textContent='Sincronizando 12 meses...'">
+          <span class="material-symbols-outlined text-base">history</span> Sync Completo (12 meses)
+        </button>
+      </form>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-400">Configura las credenciales Meta en la seccion Config.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if result %}
+<div class="card mt-6">
+  <h3 class="text-lg font-semibold mb-2">Resultado</h3>
+  <pre class="bg-gray-50 rounded-lg p-4 text-sm font-mono text-gray-700 overflow-x-auto">{{ result | tojson(indent=2) }}</pre>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
+  <p class="text-red-700 text-sm"><strong>Error:</strong> {{ error }}</p>
+</div>
+{% endif %}
+
+<!-- DB Stats -->
+<div class="card mt-6">
+  <h3 class="text-lg font-semibold mb-4">Estado de la Base de Datos</h3>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-gray-50 rounded-lg p-3 text-center">
+      <p class="text-2xl font-bold text-gray-900">{{ stats.orders }}</p>
+      <p class="text-xs text-gray-500">Ordenes</p>
+    </div>
+    <div class="bg-gray-50 rounded-lg p-3 text-center">
+      <p class="text-2xl font-bold text-gray-900">{{ stats.order_lines }}</p>
+      <p class="text-xs text-gray-500">Line Items</p>
+    </div>
+    <div class="bg-gray-50 rounded-lg p-3 text-center">
+      <p class="text-2xl font-bold text-gray-900">{{ stats.meta_insights }}</p>
+      <p class="text-xs text-gray-500">Meta Insights</p>
+    </div>
+    <div class="bg-gray-50 rounded-lg p-3 text-center">
+      <p class="text-2xl font-bold text-gray-900">{{ stats.periodos }}</p>
+      <p class="text-xs text-gray-500">Periodos</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

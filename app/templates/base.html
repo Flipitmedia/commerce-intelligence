@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Commerce Intelligence{% endblock %} — Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .nav-link { @apply px-3 py-2 rounded-lg text-sm font-medium transition-colors; }
+    .nav-link:hover { @apply bg-gray-100; }
+    .nav-link.active { @apply bg-blue-50 text-blue-700; }
+    .btn { @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer; }
+    .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
+    .btn-secondary { @apply bg-gray-100 text-gray-700 hover:bg-gray-200; }
+    .btn-danger { @apply bg-red-50 text-red-600 hover:bg-red-100; }
+    .btn-success { @apply bg-emerald-600 text-white hover:bg-emerald-700; }
+    .input { @apply block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500; }
+    .label { @apply block text-sm font-medium text-gray-700 mb-1; }
+    .card { @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6; }
+    .table-header { @apply px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider; }
+    .table-cell { @apply px-4 py-3 text-sm text-gray-900; }
+    .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
+    .badge-ok { @apply bg-emerald-50 text-emerald-700; }
+    .badge-warn { @apply bg-amber-50 text-amber-700; }
+    .badge-error { @apply bg-red-50 text-red-700; }
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-block; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Top nav -->
+  <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14">
+        <div class="flex items-center gap-6">
+          <a href="/admin/{{ store.id }}?token={{ token }}" class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-blue-600">analytics</span>
+            <span class="font-bold text-gray-900">{{ store.name }}</span>
+          </a>
+          <div class="flex items-center gap-1">
+            <a href="/admin/{{ store.id }}?token={{ token }}"
+               class="nav-link {% if active_page == 'config' %}active{% endif %}">
+              <span class="material-symbols-outlined text-base align-middle mr-1">settings</span>Config
+            </a>
+            <a href="/admin/{{ store.id }}/costs?token={{ token }}"
+               class="nav-link {% if active_page == 'costs' %}active{% endif %}">
+              <span class="material-symbols-outlined text-base align-middle mr-1">inventory</span>Costos
+            </a>
+            <a href="/admin/{{ store.id }}/fixed-costs?token={{ token }}"
+               class="nav-link {% if active_page == 'fixed_costs' %}active{% endif %}">
+              <span class="material-symbols-outlined text-base align-middle mr-1">payments</span>Fijos
+            </a>
+            <a href="/admin/{{ store.id }}/variable-costs?token={{ token }}"
+               class="nav-link {% if active_page == 'variable_costs' %}active{% endif %}">
+              <span class="material-symbols-outlined text-base align-middle mr-1">receipt_long</span>Variables
+            </a>
+            <a href="/admin/{{ store.id }}/invoices?token={{ token }}"
+               class="nav-link {% if active_page == 'invoices' %}active{% endif %}">
+              <span class="material-symbols-outlined text-base align-middle mr-1">description</span>Facturas
+            </a>
+            <a href="/admin/{{ store.id }}/sync?token={{ token }}"
+               class="nav-link {% if active_page == 'sync' %}active{% endif %}">
+              <span class="material-symbols-outlined text-base align-middle mr-1">sync</span>Sync
+            </a>
+          </div>
+        </div>
+        <a href="/dashboard/?store={{ store.id }}&token={{ token }}" target="_blank"
+           class="btn btn-primary text-xs">
+          <span class="material-symbols-outlined text-base">dashboard</span> Dashboard
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Toast notifications -->
+  <div id="toast" class="fixed bottom-4 right-4 hidden bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm z-50 transition-all">
+    <span id="toastText"></span>
+  </div>
+
+  <script>
+    function showToast(msg, duration = 3000) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastText').textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), duration);
+    }
+
+    // HTMX: show toast on successful operations
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+      const msg = evt.detail.xhr.getResponseHeader('HX-Trigger-After-Swap');
+      if (msg) showToast(msg);
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

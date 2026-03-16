@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Facturas Compra — {{ store.name }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Facturas de Compra</h1>
+  <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn btn-primary">
+    <span class="material-symbols-outlined text-base">add</span> Agregar
+  </button>
+</div>
+
+<div class="card overflow-hidden p-0">
+  <table class="w-full">
+    <thead class="bg-gray-50 border-b border-gray-200">
+      <tr>
+        <th class="table-header">Fecha</th>
+        <th class="table-header">Periodo</th>
+        <th class="table-header">Proveedor</th>
+        <th class="table-header">Descripcion</th>
+        <th class="table-header text-right">Neto</th>
+        <th class="table-header text-right">IVA</th>
+        <th class="table-header text-right">Total</th>
+        <th class="table-header">N Factura</th>
+        <th class="table-header w-24">Acciones</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for item in items %}
+      <tr class="hover:bg-gray-50">
+        <td class="table-cell font-mono text-xs">{{ item.date }}</td>
+        <td class="table-cell font-mono text-xs">{{ item.periodo }}</td>
+        <td class="table-cell">{{ item.supplier }}</td>
+        <td class="table-cell">{{ item.description }}</td>
+        <td class="table-cell text-right font-mono">{{ "{:,.0f}".format(item.net_amount) }}</td>
+        <td class="table-cell text-right font-mono">{{ "{:,.0f}".format(item.iva) }}</td>
+        <td class="table-cell text-right font-mono font-semibold">{{ "{:,.0f}".format(item.total_amount) }}</td>
+        <td class="table-cell font-mono text-xs">{{ item.invoice_number }}</td>
+        <td class="table-cell">
+          <form method="POST" action="/admin/{{ store.id }}/invoices/{{ item.id }}/delete?token={{ token }}"
+                class="inline" onsubmit="return confirm('Eliminar?')">
+            <button class="text-red-500 hover:text-red-700">
+              <span class="material-symbols-outlined text-base">delete</span>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="table-cell text-center text-gray-400 py-8">Sin facturas</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Add Modal -->
+<div id="addModal" class="hidden fixed inset-0 bg-black/30 flex items-center justify-center z-50" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+    <h3 class="text-lg font-semibold mb-4">Agregar Factura de Compra</h3>
+    <form method="POST" action="/admin/{{ store.id }}/invoices?token={{ token }}" class="space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="label">Fecha</label>
+          <input type="date" name="date" class="input" required>
+        </div>
+        <div>
+          <label class="label">Periodo (YYYY-MM)</label>
+          <input type="text" name="periodo" value="{{ store.periodo_activo }}" class="input" required pattern="\d{4}-\d{2}">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="label">Proveedor</label>
+          <input type="text" name="supplier" class="input" required>
+        </div>
+        <div>
+          <label class="label">N Factura</label>
+          <input type="text" name="invoice_number" class="input">
+        </div>
+      </div>
+      <div>
+        <label class="label">Descripcion</label>
+        <input type="text" name="description" class="input">
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="label">Monto Neto</label>
+          <input type="number" step="1" name="net_amount" id="net_amount" class="input" required oninput="calcIVA()">
+        </div>
+        <div>
+          <label class="label">IVA</label>
+          <input type="number" step="1" name="iva" id="iva" class="input" required>
+        </div>
+        <div>
+          <label class="label">Total</label>
+          <input type="number" step="1" name="total_amount" id="total_amount" class="input" required>
+        </div>
+      </div>
+      <div>
+        <label class="label">Notas</label>
+        <input type="text" name="notes" class="input">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="this.closest('#addModal').classList.add('hidden')" class="btn btn-secondary">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function calcIVA() {
+  const neto = parseFloat(document.getElementById('net_amount').value) || 0;
+  const iva = Math.round(neto * {{ store.tax_rate }});
+  document.getElementById('iva').value = iva;
+  document.getElementById('total_amount').value = neto + iva;
+}
+</script>
+{% endblock %}
