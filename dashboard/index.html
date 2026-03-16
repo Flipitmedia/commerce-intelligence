@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commerce Intelligence — Dashboard</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Material Symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'ci-primary': 'var(--ci-primary)',
+            'ci-primary-dark': 'var(--ci-primary-dark)',
+            'ci-primary-light': 'var(--ci-primary-light)',
+            'ci-secondary': 'var(--ci-secondary)',
+            'ci-secondary-light': 'var(--ci-secondary-light)',
+          },
+          fontFamily: {
+            'sans': ['Inter', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'soft':  '0 2px 15px rgba(0,0,0,0.15)',
+            'card':  '0 1px 8px rgba(0,0,0,0.12)',
+            'float': '0 4px 25px rgba(0,0,0,0.25)',
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    :root {
+      --ci-bg: #07111f;
+      --ci-bg-alt: #0b1728;
+      --ci-surface: rgba(12, 24, 41, 0.82);
+      --ci-surface-strong: rgba(9, 18, 31, 0.94);
+      --ci-surface-soft: rgba(18, 33, 54, 0.56);
+      --ci-panel: linear-gradient(180deg, rgba(15, 28, 47, 0.92) 0%, rgba(9, 18, 31, 0.96) 100%);
+      --ci-text: #edf3fb;
+      --ci-text-mid: #cad8ea;
+      --ci-text-light: #8da0b8;
+      --ci-text-muted: #5d6d83;
+      --ci-primary: #4ecb71;
+      --ci-primary-dark: #30b25a;
+      --ci-primary-light: rgba(78, 203, 113, 0.14);
+      --ci-secondary: #ff6a63;
+      --ci-secondary-light: rgba(255, 106, 99, 0.14);
+      --ci-warn: #d6a34a;
+      --ci-warn-light: rgba(214, 163, 74, 0.14);
+      --ci-success: #4ecb71;
+      --ci-success-light: rgba(78, 203, 113, 0.14);
+      --ci-neon: #6ea8ff;
+      --ci-border: rgba(136, 169, 208, 0.16);
+      --ci-border-light: rgba(136, 169, 208, 0.1);
+      --ci-shadow: 0 20px 50px rgba(1, 6, 15, 0.45);
+      --ci-inner-glow: inset 0 1px 0 rgba(255,255,255,0.03), inset 0 0 0 1px rgba(136,169,208,0.04);
+    }
+    html { color-scheme: dark; }
+    body {
+      background:
+        radial-gradient(900px 500px at 50% -8%, rgba(78, 126, 204, 0.18), transparent 58%),
+        radial-gradient(700px 380px at 85% 12%, rgba(65, 95, 160, 0.12), transparent 60%),
+        linear-gradient(180deg, #0a1526 0%, #07111f 48%, #050d18 100%);
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent 22%), radial-gradient(circle at top left, rgba(125,163,255,0.06), transparent 22%);
+      mix-blend-mode: screen;
+      opacity: 0.6;
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(150,172,205,0.14); border-radius: 999px; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400; }
+    .icon-filled { font-variation-settings: 'FILL' 1, 'wght' 400; }
+
+    .glass-card {
+      position: relative;
+      background: var(--ci-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--ci-border);
+      border-radius: 1.15rem;
+      box-shadow: var(--ci-shadow), var(--ci-inner-glow);
+      overflow: hidden;
+    }
+    .glass-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(255,255,255,0.035), transparent 28%);
+      opacity: 0.85;
+    }
+    .glass-card > * { position: relative; z-index: 1; }
+    .neon-glow-success { box-shadow: 0 0 22px rgba(78, 203, 113, 0.08); }
+    .neon-glow-warning { box-shadow: 0 0 22px rgba(214, 163, 74, 0.08); }
+    .neon-glow-critical { box-shadow: 0 0 22px rgba(255, 106, 99, 0.08); }
+
+    header, footer {
+      border-color: var(--ci-border) !important;
+    }
+    header.sticky {
+      background: linear-gradient(180deg, rgba(8,18,32,0.92), rgba(8,18,32,0.78)) !important;
+      box-shadow: 0 18px 40px rgba(2, 8, 19, 0.28);
+    }
+    #mainContent {
+      position: relative;
+      isolation: isolate;
+    }
+    #mainContent::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      border: 1px solid rgba(140, 167, 204, 0.06);
+      background: linear-gradient(180deg, rgba(10,22,38,0.28), rgba(10,22,38,0));
+      pointer-events: none;
+      z-index: -1;
+    }
+    #heroSection h2 {
+      letter-spacing: -0.045em;
+      text-wrap: balance;
+    }
+    #heroSection p {
+      max-width: 58rem;
+      color: var(--ci-text-light);
+    }
+    #storeSelectorPill,
+    #monthSelector.parent,
+    header .bg-\[var\(--ci-bg-alt\)\],
+    #quickStats {
+      background: rgba(9, 18, 31, 0.75) !important;
+      border-color: var(--ci-border) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 8px 30px rgba(3, 9, 20, 0.22);
+    }
+    #quickStats {
+      background: linear-gradient(180deg, rgba(11,21,37,0.92), rgba(8,16,29,0.98)) !important;
+    }
+    #secKpisGrid > div,
+    #heroKpi0, #heroKpi1, #heroKpi2,
+    #wisdomCards > div,
+    #moneyFlow > div,
+    #pnlDetailWrap,
+    .glass-card table,
+    .glass-card canvas {
+      position: relative;
+    }
+    #heroKpi0, #heroKpi1, #heroKpi2 {
+      min-height: 164px;
+    }
+    #secKpisGrid > div {
+      border-radius: 0.95rem !important;
+      background: linear-gradient(180deg, rgba(15,27,45,0.9), rgba(11,20,34,0.92));
+      border: 1px solid rgba(136,169,208,0.12);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 12px 28px rgba(2,8,18,0.22);
+    }
+    #moneyFlow > .absolute {
+      left: 1.8rem !important;
+      width: 1px !important;
+      background: linear-gradient(180deg, rgba(78,203,113,0.18), rgba(214,163,74,0.12) 38%, rgba(124,150,191,0.08));
+    }
+    #moneyFlow .group > div:last-child {
+      border: 1px solid rgba(136,169,208,0.1);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.015);
+    }
+    #histTable thead tr,
+    #pnlDetailWrap thead tr,
+    #quickStats,
+    .bg-\[\#0d1117\] {
+      background: rgba(8,16,29,0.96) !important;
+    }
+    #histTable tbody tr:hover {
+      background: rgba(255,255,255,0.025) !important;
+    }
+    .glass-card .text-\[var\(--ci-text-light\)\] {
+      color: var(--ci-text-light);
+    }
+    .glass-card .text-\[var\(--ci-text-muted\)\] {
+      color: var(--ci-text-muted);
+    }
+    .glass-card .border-\[var\(--ci-border\)\],
+    .glass-card .border-\[var\(--ci-border-light\)\] {
+      border-color: var(--ci-border-light) !important;
+    }
+    .glass-card .bg-white\/5 { background-color: rgba(255,255,255,0.038) !important; }
+    .glass-card .hover\:bg-white\/5:hover { background-color: rgba(255,255,255,0.038) !important; }
+    .glass-card .bg-white\/10 { background-color: rgba(255,255,255,0.08) !important; }
+    .glass-card .shadow-soft, .glass-card .shadow-card, .glass-card .shadow-float {
+      box-shadow: none !important;
+    }
+    .glass-card .rounded-3xl { border-radius: 1.35rem !important; }
+    .glass-card .rounded-2xl { border-radius: 1rem !important; }
+    .glass-card .rounded-xl { border-radius: 0.9rem !important; }
+    canvas { filter: saturate(0.95) contrast(1.04); }
+
+    /* Tooltip system */
+    #infoTooltip {
+      animation: tooltipIn 0.15s ease-out;
+    }
+    @keyframes tooltipIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .info-trigger {
+      cursor: help;
+      transition: color 0.15s;
+    }
+    .info-trigger:hover {
+      color: var(--ci-primary) !important;
+    }
+  </style>
+
+  <style id="second-pass-style">
+    :root {
+      --ci-bg: #050b16;
+      --ci-bg-alt: #0b1424;
+      --ci-surface: rgba(10, 19, 35, 0.88);
+      --ci-surface-strong: rgba(8, 14, 28, 0.97);
+      --ci-surface-soft: rgba(21, 36, 61, 0.54);
+      --ci-panel: linear-gradient(180deg, rgba(22, 36, 66, 0.86) 0%, rgba(11, 19, 36, 0.96) 100%);
+      --ci-text: #eef4ff;
+      --ci-text-mid: #d4dff1;
+      --ci-text-light: #91a5c7;
+      --ci-text-muted: #607292;
+      --ci-primary: #4d79ff;
+      --ci-primary-dark: #4e74ff;
+      --ci-primary-light: rgba(77, 121, 255, 0.16);
+      --ci-secondary: #ff7a66;
+      --ci-neon: #82a7ff;
+      --ci-border: rgba(128, 157, 220, 0.14);
+      --ci-border-light: rgba(128, 157, 220, 0.09);
+      --ci-shadow: 0 28px 80px rgba(1, 6, 18, 0.58);
+      --ci-inner-glow: inset 0 1px 0 rgba(255,255,255,0.03), inset 0 0 0 1px rgba(137,170,238,0.05);
+    }
+
+    body {
+      background:
+        radial-gradient(1100px 700px at 52% -10%, rgba(89,122,255,0.18), transparent 54%),
+        radial-gradient(900px 640px at 70% 22%, rgba(70,108,235,0.14), transparent 48%),
+        radial-gradient(520px 340px at 24% 74%, rgba(38,64,128,0.18), transparent 62%),
+        linear-gradient(180deg, #0a1223 0%, #050c18 52%, #040913 100%);
+    }
+    body::before {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.02), transparent 20%),
+        radial-gradient(circle at 18% 8%, rgba(122,160,255,0.07), transparent 20%),
+        radial-gradient(circle at 78% 12%, rgba(96,134,246,0.08), transparent 22%);
+      opacity: .9;
+    }
+
+    header.sticky {
+      background: rgba(7, 13, 25, 0.76) !important;
+      border-bottom-color: rgba(125, 150, 205, 0.12) !important;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+    }
+    header .max-w-7xl {
+      max-width: 1330px;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    #mainContent {
+      max-width: 1330px !important;
+      margin-top: 1rem;
+      margin-bottom: 1.6rem;
+      padding: 1.35rem 1rem 1.8rem !important;
+      background: linear-gradient(180deg, rgba(12, 21, 38, 0.86), rgba(7, 13, 24, 0.96));
+      border: 1px solid rgba(133, 159, 215, 0.11);
+      border-radius: 30px;
+      box-shadow: 0 36px 90px rgba(2, 7, 19, 0.62), inset 0 1px 0 rgba(255,255,255,0.03);
+      overflow: hidden;
+    }
+    #mainContent::before {
+      inset: 0;
+      border-radius: 30px;
+      border: 1px solid rgba(140, 167, 204, 0.06);
+      background:
+        radial-gradient(700px 280px at 34% 0%, rgba(104,137,255,0.11), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0) 22%);
+      z-index: 0;
+    }
+    #mainContent > * { position: relative; z-index: 1; }
+
+    .glass-card {
+      background:
+        linear-gradient(180deg, rgba(26, 41, 72, 0.82), rgba(10, 18, 34, 0.96));
+      border: 1px solid rgba(126, 156, 219, 0.12);
+      border-radius: 1rem;
+      backdrop-filter: blur(14px);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.035),
+        inset 0 -16px 30px rgba(0,0,0,0.1),
+        0 18px 36px rgba(2,8,18,0.22);
+    }
+    .glass-card::before {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012) 24%, transparent 42%),
+        radial-gradient(240px 120px at 16% 0%, rgba(111,145,255,0.06), transparent 70%);
+      opacity: 1;
+    }
+    .glass-card .rounded-3xl, .glass-card.rounded-3xl { border-radius: 1rem !important; }
+    .glass-card .rounded-2xl, .glass-card.rounded-2xl { border-radius: .9rem !important; }
+
+    #heroSection { margin-bottom: 1.6rem !important; }
+    #heroSection h2 {
+      font-size: clamp(2rem, 4vw, 3.6rem);
+      letter-spacing: -0.055em;
+      line-height: 1.01;
+      text-shadow: 0 6px 24px rgba(28,55,140,.24);
+    }
+    @media (min-width: 1024px) {
+      #heroSection h2 { white-space: nowrap; }
+    }
+    #heroSection p { max-width: 44rem; }
+    #heroStatusLabel { color: #6c8fff !important; }
+
+    #heroKpi0, #heroKpi1, #heroKpi2 {
+      min-height: 172px;
+      background:
+        linear-gradient(180deg, rgba(25, 40, 72, 0.88), rgba(13, 21, 40, 0.98));
+    }
+    #heroKpi1 {
+      background:
+        linear-gradient(180deg, rgba(80, 112, 255, 0.88), rgba(84, 103, 243, 0.86));
+      border-color: rgba(170, 190, 255, 0.24);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        inset 0 -20px 40px rgba(31,45,120,0.24),
+        0 20px 40px rgba(22,33,86,0.24);
+    }
+    #heroKpi1 * { color: #fff !important; }
+    #heroKpi1 [class*="text-[var(--ci-text-light)]"], #heroKpi1 .text-ci-primary { color: rgba(255,255,255,.8) !important; }
+
+    #secKpisGrid { gap: .7rem !important; margin-bottom: 1.8rem !important; }
+    #secKpisGrid > div {
+      border-radius: .82rem !important;
+      background: linear-gradient(180deg, rgba(16,28,51,0.94), rgba(11,19,36,0.97));
+      border: 1px solid rgba(128,157,220,0.1);
+      min-height: 108px;
+    }
+
+    #quickStats,
+    #moneyFlow > .group > div:last-child,
+    #pnlDetailWrap,
+    #histTable thead tr,
+    #pnlDetailWrap thead tr {
+      background: rgba(8, 14, 27, 0.92) !important;
+    }
+
+    #moneyFlow > .absolute { opacity: .75; }
+    #moneyFlow .group > div:last-child {
+      background: linear-gradient(180deg, rgba(17,28,50,.78), rgba(10,16,30,.94));
+      border-radius: 1rem;
+      padding-top: 1rem;
+      padding-bottom: 1rem;
+    }
+
+    #wisdomCards > div {
+      background: linear-gradient(180deg, rgba(19,31,55,0.78), rgba(10,16,30,0.94));
+      border: 1px solid rgba(128,157,220,0.1);
+      border-radius: .9rem;
+    }
+
+    .glass-card canvas { filter: saturate(1.05) contrast(1.06) brightness(1.02); }
+
+    #histTable thead tr th, #pnlDetailWrap thead tr th {
+      letter-spacing: .12em;
+      color: #8da2c8;
+      font-size: .64rem;
+    }
+    #histTable tbody tr { border-top: 1px solid rgba(128,157,220,0.06); }
+    #histTable tbody tr:hover { background: rgba(255,255,255,0.03) !important; }
+
+    .shadow-soft, .shadow-card, .shadow-float { box-shadow: none !important; }
+
+    @media (max-width: 768px) {
+      #mainContent {
+        margin-top: .4rem;
+        border-radius: 20px;
+        padding: 1.1rem 1rem 1.6rem !important;
+      }
+      #mainContent::before { border-radius: 20px; }
+      header .max-w-7xl { padding-left: 1rem; padding-right: 1rem; }
+    }
+  </style>
+
+  <style id="theme-light-overrides">
+    html[data-theme="light"] { color-scheme: light; }
+    html[data-theme="light"] body {
+      background:
+        radial-gradient(1100px 700px at 52% -10%, rgba(108,138,255,0.12), transparent 54%),
+        radial-gradient(900px 640px at 70% 22%, rgba(132,165,255,0.08), transparent 48%),
+        linear-gradient(180deg, #eef4fb 0%, #e8eef8 52%, #e2eaf6 100%);
+      color: var(--ci-text);
+    }
+    html[data-theme="light"] body::before {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.45), transparent 24%),
+        radial-gradient(circle at 18% 8%, rgba(122,160,255,0.10), transparent 20%),
+        radial-gradient(circle at 78% 12%, rgba(96,134,246,0.10), transparent 22%);
+      opacity: .7;
+      mix-blend-mode: normal;
+    }
+    html[data-theme="light"] {
+      --ci-bg: #e9eff8;
+      --ci-bg-alt: #f5f8fd;
+      --ci-surface: rgba(255,255,255,0.88);
+      --ci-surface-strong: rgba(255,255,255,0.97);
+      --ci-surface-soft: rgba(241,246,253,0.9);
+      --ci-panel: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(246,249,253,0.98) 100%);
+      --ci-text: #14233b;
+      --ci-text-mid: #314768;
+      --ci-text-light: #5f7392;
+      --ci-text-muted: #7c8ca7;
+      --ci-primary: #4d79ff;
+      --ci-primary-dark: #3f67ec;
+      --ci-primary-light: rgba(77, 121, 255, 0.12);
+      --ci-secondary: #e7685d;
+      --ci-neon: #5f87ff;
+      --ci-border: rgba(120, 145, 190, 0.18);
+      --ci-border-light: rgba(120, 145, 190, 0.12);
+      --ci-shadow: 0 24px 60px rgba(93, 117, 162, 0.16);
+      --ci-inner-glow: inset 0 1px 0 rgba(255,255,255,0.88), inset 0 0 0 1px rgba(120,145,190,0.04);
+    }
+    html[data-theme="light"] header.sticky {
+      background: rgba(239,244,251,0.78) !important;
+      border-bottom-color: rgba(120,145,190,0.16) !important;
+      box-shadow: 0 14px 32px rgba(123, 145, 182, 0.12);
+      backdrop-filter: blur(12px);
+    }
+    html[data-theme="light"] #mainContent {
+      background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(245,248,253,0.98));
+      border-color: rgba(120,145,190,0.14);
+      box-shadow: 0 28px 70px rgba(114, 133, 167, 0.16), inset 0 1px 0 rgba(255,255,255,0.75);
+    }
+    html[data-theme="light"] #mainContent::before {
+      border-color: rgba(120,145,190,0.08);
+      background:
+        radial-gradient(700px 280px at 34% 0%, rgba(104,137,255,0.08), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 22%);
+    }
+    html[data-theme="light"] .glass-card,
+    html[data-theme="light"] #heroKpi0,
+    html[data-theme="light"] #heroKpi2,
+    html[data-theme="light"] #secKpisGrid > div,
+    html[data-theme="light"] #moneyFlow .group > div:last-child,
+    html[data-theme="light"] #wisdomCards > div,
+    html[data-theme="light"] #quickStats,
+    html[data-theme="light"] #pnlDetailWrap,
+    html[data-theme="light"] #histTable thead tr,
+    html[data-theme="light"] #pnlDetailWrap thead tr {
+      background: linear-gradient(180deg, rgba(255,255,255,0.93), rgba(246,249,253,0.98)) !important;
+      border-color: rgba(120,145,190,0.14) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), 0 10px 24px rgba(124,145,180,0.08);
+    }
+    html[data-theme="light"] .glass-card::before {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.1) 24%, transparent 42%),
+        radial-gradient(240px 120px at 16% 0%, rgba(111,145,255,0.05), transparent 70%);
+    }
+    html[data-theme="light"] #heroKpi1 {
+      background: linear-gradient(180deg, rgba(106,132,255,0.92), rgba(84,103,243,0.92)) !important;
+      border-color: rgba(130,150,255,0.22) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 18px 36px rgba(85,103,200,0.18) !important;
+    }
+    html[data-theme="light"] .bg-\[\#0d1117\],
+    html[data-theme="light"] #headerLogo,
+    html[data-theme="light"] #storeSelectorPill,
+    html[data-theme="light"] #monthSelector.parent,
+    html[data-theme="light"] header .bg-\[var\(--ci-bg-alt\)\] {
+      background: rgba(255,255,255,0.75) !important;
+      border-color: rgba(120,145,190,0.16) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 10px 24px rgba(124,145,180,0.08);
+    }
+    html[data-theme="light"] .text-white,
+    html[data-theme="light"] .text-\[var\(--ci-text\)\] { color: var(--ci-text) !important; }
+    html[data-theme="light"] .text-\[var\(--ci-text-light\)\] { color: var(--ci-text-light) !important; }
+    html[data-theme="light"] .text-\[var\(--ci-text-muted\)\] { color: var(--ci-text-muted) !important; }
+    html[data-theme="light"] #histTable tbody tr:hover { background: rgba(90,110,160,0.05) !important; }
+    html[data-theme="light"] #heroSection h2 { text-shadow: none; }
+    html[data-theme="light"] canvas { filter: saturate(0.95) contrast(1.02) brightness(0.96); }
+    #themeToggleBtn .theme-label-light, #themeToggleBtnMobile .theme-label-light { display:none; }
+    html[data-theme="light"] #themeToggleBtn .theme-label-dark, html[data-theme="light"] #themeToggleBtnMobile .theme-label-dark { display:none; }
+    html[data-theme="light"] #themeToggleBtn .theme-label-light, html[data-theme="light"] #themeToggleBtnMobile .theme-label-light { display:inline; }
+  </style>
+</head>
+
+<body class="bg-[var(--ci-bg)] text-[var(--ci-text)] font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- ═══════════ SETUP SCREEN ═══════════ -->
+  <div id="setupScreen" class="hidden fixed inset-0 bg-[var(--ci-bg)] z-[200] flex items-center justify-center p-4">
+    <div class="glass-card rounded-2xl p-8 sm:p-10 max-w-md w-full text-center">
+      <div class="size-16 bg-[#0d1117] text-ci-primary rounded-2xl flex items-center justify-center shadow-soft mx-auto mb-6">
+        <span class="material-symbols-outlined text-3xl icon-filled">insights</span>
+      </div>
+      <h1 class="text-2xl font-bold mb-2">Commerce Intelligence</h1>
+      <p class="text-[var(--ci-text-light)] text-sm mb-6">Conecta tu spreadsheet para visualizar tus datos financieros en tiempo real.</p>
+      <div class="text-left mb-3">
+        <label for="setupStoreName" class="block text-sm font-medium text-[var(--ci-text-light)] mb-1.5">Nombre de la tienda</label>
+        <input id="setupStoreName" type="text" placeholder="Ej: MicoVitae, LaliGoods..." class="w-full px-4 py-2.5 rounded-xl border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] text-[var(--ci-text)] text-sm focus:ring-2 focus:ring-ci-primary focus:border-transparent outline-none transition">
+      </div>
+      <div class="text-left mb-4">
+        <label for="setupApiUrl" class="block text-sm font-medium text-[var(--ci-text-light)] mb-1.5">Web App URL</label>
+        <input id="setupApiUrl" type="url" placeholder="https://script.google.com/macros/s/..." class="w-full px-4 py-2.5 rounded-xl border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] text-[var(--ci-text)] text-sm focus:ring-2 focus:ring-ci-primary focus:border-transparent outline-none transition">
+        <p id="setupError" class="hidden text-ci-secondary text-xs mt-1.5">URL no valida. Debe ser una URL de script.google.com</p>
+      </div>
+      <button onclick="handleSetupConnect()" class="w-full bg-ci-primary hover:opacity-90 text-white font-bold py-2.5 px-6 rounded-xl transition text-sm">Conectar</button>
+      <p class="text-xs text-[var(--ci-text-muted)] mt-4 leading-relaxed">Pega la URL de tu Google Apps Script publicado como Web App. Solo se aceptan URLs de <strong>script.google.com</strong>.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════ PIN SCREEN (Registry Mode) ═══════════ -->
+  <div id="pinScreen" class="hidden fixed inset-0 bg-[var(--ci-bg)] z-[200] flex items-center justify-center p-4">
+    <div class="glass-card rounded-2xl p-8 sm:p-10 max-w-sm w-full text-center">
+      <div class="size-16 bg-[#0d1117] text-ci-primary rounded-2xl flex items-center justify-center shadow-soft mx-auto mb-6">
+        <span class="material-symbols-outlined text-3xl icon-filled">lock</span>
+      </div>
+      <h1 class="text-xl font-bold mb-2">Acceso Dashboard</h1>
+      <p class="text-[var(--ci-text-light)] text-sm mb-6">Ingresa el PIN para acceder al panel de control.</p>
+      <input id="pinInput" type="password" maxlength="10" placeholder="PIN"
+        class="w-full px-4 py-3 rounded-xl border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] text-[var(--ci-text)] text-center text-lg tracking-[0.3em] font-mono focus:ring-2 focus:ring-ci-primary focus:border-transparent outline-none transition"
+        onkeydown="if(event.key==='Enter')handlePinSubmit()">
+      <p id="pinError" class="hidden text-ci-secondary text-xs mt-2">PIN incorrecto</p>
+      <button onclick="handlePinSubmit()" class="w-full bg-ci-primary hover:opacity-90 text-white font-bold py-2.5 px-6 rounded-xl transition text-sm mt-4">Entrar</button>
+    </div>
+  </div>
+
+  <!-- ═══════════ ADD STORE MODAL ═══════════ -->
+  <div id="addStoreModal" class="hidden fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4" onclick="if(event.target===this)closeAddStoreModal()">
+    <div class="glass-card rounded-2xl p-6 sm:p-8 max-w-md w-full">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-lg font-bold">Agregar tienda</h2>
+        <button onclick="closeAddStoreModal()" class="size-8 flex items-center justify-center rounded-full hover:bg-white/5 transition">
+          <span class="material-symbols-outlined text-[var(--ci-text-light)]">close</span>
+        </button>
+      </div>
+      <div class="text-left mb-3">
+        <label for="modalStoreName" class="block text-sm font-medium text-[var(--ci-text-light)] mb-1.5">Nombre de la tienda</label>
+        <input id="modalStoreName" type="text" placeholder="Ej: MicoVitae" class="w-full px-4 py-2.5 rounded-xl border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] text-[var(--ci-text)] text-sm focus:ring-2 focus:ring-ci-primary focus:border-transparent outline-none transition">
+      </div>
+      <div class="text-left mb-4">
+        <label for="modalApiUrl" class="block text-sm font-medium text-[var(--ci-text-light)] mb-1.5">Web App URL</label>
+        <input id="modalApiUrl" type="url" placeholder="https://script.google.com/macros/s/..." class="w-full px-4 py-2.5 rounded-xl border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] text-[var(--ci-text)] text-sm focus:ring-2 focus:ring-ci-primary focus:border-transparent outline-none transition">
+        <p id="modalError" class="hidden text-ci-secondary text-xs mt-1.5">URL no valida.</p>
+      </div>
+      <button onclick="handleAddStore()" class="w-full bg-ci-primary hover:opacity-90 text-white font-bold py-2.5 px-6 rounded-xl transition text-sm">Agregar</button>
+
+      <!-- Existing stores list -->
+      <div id="storeListSection" class="hidden mt-6 pt-5 border-t border-[var(--ci-border)]">
+        <h3 class="text-sm font-semibold text-[var(--ci-text-light)] mb-3">Tiendas conectadas</h3>
+        <div id="storeList" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ LOADING OVERLAY ═══════════ -->
+  <div id="loading" class="fixed inset-0 bg-[var(--ci-bg)] z-[100] flex flex-col items-center justify-center gap-4 transition-opacity duration-500">
+    <div class="w-12 h-12 border-[3px] border-[var(--ci-border)] border-t-ci-primary rounded-full animate-spin"></div>
+    <p class="text-[var(--ci-text-light)] text-sm font-medium">Cargando datos...</p>
+  </div>
+
+  <!-- ═══════════ INFO TOOLTIP POPOVER ═══════════ -->
+  <div id="infoTooltip" class="hidden fixed z-[300] max-w-xs w-72 glass-card rounded-xl p-4 transition-all duration-200" style="pointer-events: auto;">
+    <div class="flex items-start justify-between gap-2 mb-2">
+      <h4 id="tooltipTitle" class="font-bold text-sm text-[var(--ci-text)]"></h4>
+      <button onclick="hideTooltip()" class="material-symbols-outlined text-[16px] text-[var(--ci-text-light)] hover:text-[var(--ci-text)] cursor-pointer shrink-0">close</button>
+    </div>
+    <p id="tooltipDesc" class="text-xs text-[var(--ci-text-light)] leading-relaxed mb-2"></p>
+    <div id="tooltipFormula" class="bg-white/5 rounded-lg p-2.5 border border-[var(--ci-border-light)]">
+      <p class="text-[10px] font-semibold text-[var(--ci-text-light)] uppercase tracking-wider mb-1">Calculo</p>
+      <p id="tooltipFormulaText" class="text-xs text-[var(--ci-text-mid)] font-mono leading-relaxed"></p>
+    </div>
+  </div>
+
+  <!-- ═══════════ CACHE WARNING BANNER ═══════════ -->
+  <div id="cacheBanner" class="hidden bg-amber-900/20 border-b border-amber-700/30 text-amber-400 text-xs text-center py-2 px-4">
+    <span class="material-symbols-outlined text-[14px] align-middle mr-1">cloud_off</span>
+    Mostrando datos en cache. No se pudo conectar al servidor.
+  </div>
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <header class="sticky top-0 z-50 backdrop-blur-md bg-[var(--ci-bg)]/80 border-b border-[var(--ci-border)]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+      <!-- Logo -->
+      <div class="flex items-center gap-3">
+        <div id="headerLogo" class="size-9 bg-[#0d1117] text-ci-primary rounded-xl flex items-center justify-center shadow-soft">
+          <span class="material-symbols-outlined text-lg icon-filled">insights</span>
+        </div>
+        <div class="hidden sm:block">
+          <h1 class="text-base font-bold tracking-tight leading-none">Commerce Intelligence</h1>
+          <span id="headerStore" class="text-xs text-[var(--ci-text-light)]">Cargando...</span>
+        </div>
+      </div>
+
+      <!-- Store + Month Selectors -->
+      <div class="flex items-center gap-2">
+        <!-- Store Selector (hidden in single-store mode) -->
+        <div id="storeSelectorPill" class="flex items-center gap-2 bg-[var(--ci-bg-alt)] rounded-full px-3 py-1.5 border border-[var(--ci-border)] shadow-card">
+          <span class="material-symbols-outlined text-ci-primary text-[18px]">storefront</span>
+          <select id="storeSelector" onchange="handleStoreSwitch(this.value)" class="bg-transparent border-none text-sm font-semibold text-[var(--ci-text)] focus:ring-0 pr-6 py-0 cursor-pointer">
+            <option value="">Cargando...</option>
+          </select>
+          <button onclick="openAddStoreModal()" class="size-6 flex items-center justify-center rounded-full hover:bg-white/5 transition ml-0.5" title="Gestionar tiendas">
+            <span class="material-symbols-outlined text-[16px] text-[var(--ci-text-light)]">settings</span>
+          </button>
+        </div>
+
+        <!-- Month Selector -->
+        <div class="flex items-center gap-2 bg-[var(--ci-bg-alt)] rounded-full px-3 py-1.5 border border-[var(--ci-border)] shadow-card">
+          <span class="material-symbols-outlined text-ci-primary text-[18px]">calendar_month</span>
+          <select id="monthSelector" class="bg-transparent border-none text-sm font-semibold text-[var(--ci-text)] focus:ring-0 pr-6 py-0 cursor-pointer">
+            <option value="">Cargando...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Action buttons — hidden on mobile, shown sm+ -->
+      <div class="hidden sm:flex items-center gap-3">
+        <button onclick="copyDashboardLink()" id="copyLinkBtn" class="flex items-center gap-2 rounded-full border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] px-3 py-1.5 text-xs font-semibold text-[var(--ci-text-light)] shadow-card transition hover:bg-white/5" title="Copiar enlace del dashboard">
+          <span class="material-symbols-outlined text-[16px] text-ci-primary">link</span>
+          <span id="copyLinkLabel">Copiar enlace</span>
+        </button>
+        <button id="themeToggleBtn" onclick="toggleColorMode()" class="flex items-center gap-2 rounded-full border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] px-3 py-1.5 text-xs font-semibold text-[var(--ci-text-light)] shadow-card transition hover:bg-white/5" title="Cambiar tema">
+          <span class="material-symbols-outlined text-[16px] text-ci-primary">contrast</span>
+          <span class="theme-label-dark">Modo claro</span>
+          <span class="theme-label-light">Modo oscuro</span>
+        </button>
+        <!-- Updated Badge -->
+        <div class="hidden md:flex items-center gap-2 text-xs text-[var(--ci-text-light)]">
+          <span class="material-symbols-outlined text-[16px]">schedule</span>
+          <span id="headerUpdated">Actualizando...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="mainContent" class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+    <!-- Error Banner -->
+    <div id="errorBanner" class="hidden mb-6 bg-ci-secondary-light border border-ci-secondary/20 rounded-2xl p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-ci-secondary text-xl">error</span>
+      <span id="errorText" class="text-ci-secondary text-sm flex-1">No se pudieron cargar los datos.</span>
+      <button onclick="loadData()" class="bg-ci-secondary text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:opacity-90 transition shrink-0">Reintentar</button>
+    </div>
+
+    <!-- ═══════════ HERO SECTION ═══════════ -->
+    <section id="heroSection" class="mb-8 sm:mb-10">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="flex h-2.5 w-2.5 relative">
+          <span id="heroPingDot" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-ci-primary-dark opacity-75"></span>
+          <span id="heroStaticDot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-ci-primary-dark"></span>
+        </span>
+        <span id="heroStatusLabel" class="text-xs font-bold uppercase tracking-wider text-ci-primary-dark">Cargando...</span>
+      </div>
+      <h2 id="heroHeadline" class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-3">
+        Cargando datos...
+      </h2>
+      <p id="heroSubtitle" class="text-base sm:text-lg text-[var(--ci-text-light)] leading-relaxed max-w-2xl"></p>
+    </section>
+
+    <!-- ═══════════ HERO KPIs (3 big cards) ═══════════ -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-6">
+      <div id="heroKpi0" class="glass-card p-5 sm:p-6 rounded-2xl hover:shadow-float transition-shadow duration-300 relative overflow-hidden group"></div>
+      <div id="heroKpi1" class="glass-card p-5 sm:p-6 rounded-2xl hover:shadow-float transition-shadow duration-300 relative overflow-hidden group"></div>
+      <div id="heroKpi2" class="glass-card p-5 sm:p-6 rounded-2xl hover:shadow-float transition-shadow duration-300 relative overflow-hidden group"></div>
+    </section>
+
+    <!-- ═══════════ SECONDARY KPIs ═══════════ -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-10">
+      <div id="secKpisContainer"></div>
+    </section>
+    <div id="secKpisGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-10"></div>
+
+    <!-- ═══════════ P&L + WISDOM GRID ═══════════ -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
+
+      <!-- Money Flow Narrative -->
+      <div class="lg:col-span-8 glass-card rounded-3xl p-6 sm:p-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h3 class="text-lg font-bold">Flujo del Dinero</h3>
+            <p class="text-sm text-[var(--ci-text-light)]">De la venta bruta a tu bolsillo</p>
+          </div>
+          <button onclick="togglePnlDetail()" class="text-ci-primary text-sm font-semibold hover:underline flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">table_chart</span>
+            Ver tabla P&L
+          </button>
+        </div>
+
+        <!-- Narrative Steps -->
+        <div id="moneyFlow" class="relative"></div>
+
+        <!-- Detailed P&L Table (hidden by default) -->
+        <div id="pnlDetailWrap" class="hidden mt-6 border-t border-[var(--ci-border)] pt-6">
+          <table class="w-full text-sm" id="pnlTable">
+            <thead>
+              <tr class="text-xs uppercase text-[var(--ci-text-light)] tracking-wide">
+                <th class="text-left py-2 px-3 font-semibold">Concepto</th>
+                <th class="text-right py-2 px-3 font-semibold">Monto</th>
+                <th class="text-right py-2 px-3 font-semibold">% Ventas</th>
+              </tr>
+            </thead>
+            <tbody id="pnlTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Financial Wisdom Sidebar -->
+      <div class="lg:col-span-4 space-y-5">
+        <div class="glass-card p-6 rounded-3xl">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-[var(--ci-text)]">school</span>
+            <h3 class="font-bold">Glosario Financiero</h3>
+          </div>
+          <div id="wisdomCards" class="space-y-3"></div>
+        </div>
+
+        <!-- Quick Stats Card -->
+        <div id="quickStats" class="bg-[#0d1117] text-white p-6 rounded-3xl shadow-soft relative overflow-hidden border border-[var(--ci-border)]">
+          <div class="absolute right-0 bottom-0 opacity-5 pointer-events-none">
+            <span class="material-symbols-outlined text-[100px]">monitoring</span>
+          </div>
+          <h3 class="font-bold text-lg mb-2 relative z-10">Resumen Rapido</h3>
+          <div id="quickStatsContent" class="text-sm text-white/80 space-y-2 relative z-10"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ TREND CHARTS ═══════════ -->
+    <section class="mb-10">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h3 class="text-lg font-bold">Tendencias Mensuales</h3>
+          <p class="text-sm text-[var(--ci-text-light)]">Evolucion de tus metricas clave</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="glass-card rounded-2xl p-5">
+          <h4 class="font-semibold text-sm mb-1">Ingresos y Utilidad</h4>
+          <p class="text-xs text-[var(--ci-text-light)] mb-4">Ventas brutas, netas y ganancia mensual</p>
+          <div class="relative h-64 sm:h-72"><canvas id="chartRevenue"></canvas></div>
+        </div>
+        <div class="glass-card rounded-2xl p-5">
+          <h4 class="font-semibold text-sm mb-1">Margenes de Rentabilidad</h4>
+          <p class="text-xs text-[var(--ci-text-light)] mb-4">Margen bruto % y utilidad neta %</p>
+          <div class="relative h-64 sm:h-72"><canvas id="chartMargins"></canvas></div>
+        </div>
+        <div class="glass-card rounded-2xl p-5">
+          <h4 class="font-semibold text-sm mb-1">Eficiencia de Marketing</h4>
+          <p class="text-xs text-[var(--ci-text-light)] mb-4">MER, ROAS Meta y CPA mensual</p>
+          <div class="relative h-64 sm:h-72"><canvas id="chartMarketing"></canvas></div>
+        </div>
+        <div class="glass-card rounded-2xl p-5">
+          <h4 class="font-semibold text-sm mb-1">Estructura de Costos</h4>
+          <p class="text-xs text-[var(--ci-text-light)] mb-4">Costo productos, ads y gastos operativos</p>
+          <div class="relative h-64 sm:h-72"><canvas id="chartCosts"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ HISTORICAL TABLE ═══════════ -->
+    <section class="mb-10">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h3 class="text-lg font-bold">Datos Historicos</h3>
+          <p class="text-sm text-[var(--ci-text-light)]">Tabla completa mes a mes</p>
+        </div>
+      </div>
+      <div class="glass-card rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs sm:text-sm" id="histTable">
+            <thead>
+              <tr class="bg-[#0d1117] text-white text-[10px] sm:text-xs uppercase tracking-wide">
+                <th class="text-left py-3 px-3 font-semibold sticky left-0 bg-[#0d1117] z-10">Periodo</th>
+                <th class="text-right py-3 px-3 font-semibold">V. Totales</th>
+                <th class="text-right py-3 px-3 font-semibold">Ing. Netos</th>
+                <th class="text-right py-3 px-3 font-semibold">Costo Prod.</th>
+                <th class="text-right py-3 px-3 font-semibold">Margen</th>
+                <th class="text-right py-3 px-3 font-semibold">Marg %</th>
+                <th class="text-right py-3 px-3 font-semibold">Ads</th>
+                <th class="text-right py-3 px-3 font-semibold">MER</th>
+                <th class="text-right py-3 px-3 font-semibold">ROAS</th>
+                <th class="text-right py-3 px-3 font-semibold">CPA</th>
+                <th class="text-right py-3 px-3 font-semibold">Gast.Op</th>
+                <th class="text-right py-3 px-3 font-semibold">Util. Op.</th>
+                <th class="text-right py-3 px-3 font-semibold">Util. Op. %</th>
+              </tr>
+            </thead>
+            <tbody id="histTableBody" class="tabular-nums"></tbody>
+          </table>
+        </div>
+        <div class="text-center py-2 text-[10px] text-[var(--ci-text-muted)] sm:hidden">
+          <span class="material-symbols-outlined text-[12px] align-middle">swipe</span> Desliza para ver mas columnas
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ═══════════ FOOTER ═══════════ -->
+  <footer class="text-center py-6 text-xs text-[var(--ci-text-muted)] border-t border-[var(--ci-border)]">
+    <!-- Mobile action buttons (solo < sm) -->
+    <div class="sm:hidden flex items-center justify-center gap-3 mb-4">
+      <button onclick="copyDashboardLink()" id="copyLinkBtnMobile" class="flex items-center gap-2 rounded-full border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] px-4 py-2 text-xs font-semibold text-[var(--ci-text-light)] shadow-card transition active:scale-95" title="Copiar enlace">
+        <span class="material-symbols-outlined text-[16px] text-ci-primary">link</span>
+        <span id="copyLinkLabelMobile">Copiar enlace</span>
+      </button>
+      <button id="themeToggleBtnMobile" onclick="toggleColorMode()" class="flex items-center gap-2 rounded-full border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] px-4 py-2 text-xs font-semibold text-[var(--ci-text-light)] shadow-card transition active:scale-95" title="Cambiar tema">
+        <span class="material-symbols-outlined text-[16px] text-ci-primary">contrast</span>
+        <span class="theme-label-dark">Modo claro</span>
+        <span class="theme-label-light">Modo oscuro</span>
+      </button>
+    </div>
+    <p>Commerce Intelligence <span id="footerVersion" class="font-semibold">v1.7.0</span></p>
+    <p class="mt-1">Datos actualizados automaticamente cada 5 minutos</p>
+  </footer>
+
+  <!-- ═══════════ JAVASCRIPT ═══════════ -->
+  <script>
+    // ── Configuration ─────────────────────────────────────
+    const REFRESH_MS = 5 * 60 * 1000;
+
+    // ── URL validation ──────────────────────────────────
+    function isValidWebAppUrl(url) {
+      try {
+        const u = new URL(url);
+        return u.protocol === 'https:' && u.hostname === 'script.google.com' && u.pathname.startsWith('/macros/s/');
+      } catch {
+        return false;
+      }
+    }
+
+    // ── Multi-store management (localStorage) ───────────
+    function getStores() {
+      try {
+        return JSON.parse(localStorage.getItem('ci_stores')) || [];
+      } catch { return []; }
+    }
+
+    function saveStores(stores) {
+      localStorage.setItem('ci_stores', JSON.stringify(stores));
+    }
+
+    function getActiveIndex() {
+      const idx = parseInt(localStorage.getItem('ci_active_store') || '0');
+      const stores = getStores();
+      return (idx >= 0 && idx < stores.length) ? idx : 0;
+    }
+
+    function setActiveIndex(idx) {
+      localStorage.setItem('ci_active_store', String(idx));
+    }
+
+    function addStore(name, url) {
+      const stores = getStores();
+      // Avoid duplicates by URL
+      const existing = stores.findIndex(s => s.url === url);
+      if (existing >= 0) {
+        stores[existing].name = name; // update name
+        saveStores(stores);
+        setActiveIndex(existing);
+        return existing;
+      }
+      stores.push({ name, url });
+      saveStores(stores);
+      const idx = stores.length - 1;
+      setActiveIndex(idx);
+      return idx;
+    }
+
+    function removeStore(idx) {
+      const stores = getStores();
+      if (idx < 0 || idx >= stores.length) return;
+      stores.splice(idx, 1);
+      saveStores(stores);
+      const activeIdx = getActiveIndex();
+      if (activeIdx >= stores.length) setActiveIndex(Math.max(0, stores.length - 1));
+      if (stores.length === 0) {
+        WEBAPP_URL = null;
+        showSetupScreen();
+      } else {
+        WEBAPP_URL = stores[getActiveIndex()].url;
+        updateStoreSelector();
+        loadData();
+      }
+    }
+
+    // ── Commerce Intelligence Python Backend ────────────────
+    // URL: /dashboard/?store=STORE_ID&token=API_TOKEN
+    let SINGLE_MODE = true;
+    let SINGLE_STORE_NAME = null;
+    let REGISTRY_MODE = false;
+    let REGISTRY_PIN = null;
+
+    function resolveApiUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const storeId = params.get('store') || params.get('s');
+      const token = params.get('token') || params.get('t');
+
+      if (!storeId || !token) return null;
+
+      SINGLE_MODE = true;
+      SINGLE_STORE_NAME = storeId;
+      // Build API URL relative to current origin
+      const origin = window.location.origin;
+      return origin + '/api/' + encodeURIComponent(storeId) + '/data?token=' + encodeURIComponent(token);
+    }
+
+    let WEBAPP_URL = resolveApiUrl();
+
+    // Resolve slug to actual WebApp URL if needed
+    async function resolveSlug() {
+      if (!WEBAPP_URL || !WEBAPP_URL.startsWith('RESOLVE_SLUG:')) return;
+      const slug = WEBAPP_URL.replace('RESOLVE_SLUG:', '');
+      try {
+        const data = await fetchGAS(REGISTRY_URL + '?action=resolve&slug=' + encodeURIComponent(slug));
+        if (data.error) {
+          document.getElementById('loading').classList.add('opacity-0', 'pointer-events-none');
+          document.getElementById('errorText').textContent = 'Tienda "' + slug + '" no encontrada.';
+          document.getElementById('errorBanner').classList.remove('hidden');
+          return;
+        }
+        WEBAPP_URL = data.url;
+        SINGLE_STORE_NAME = data.name;
+        loadData();
+      } catch (err) {
+        document.getElementById('loading').classList.add('opacity-0', 'pointer-events-none');
+        document.getElementById('errorText').textContent = 'Error al resolver tienda.';
+        document.getElementById('errorBanner').classList.remove('hidden');
+      }
+    }
+
+    // Apply single-store mode: hide store selector and settings
+    function applySingleMode() {
+      if (!SINGLE_MODE) return;
+      const pill = document.getElementById('storeSelectorPill');
+      if (pill) pill.style.display = 'none';
+    }
+    applySingleMode();
+
+    // Apply registry mode: hide manual store management (gear icon)
+    function applyRegistryMode() {
+      if (!REGISTRY_MODE) return;
+      // Hide the settings gear button — stores come from registry, not manual add
+      const pill = document.getElementById('storeSelectorPill');
+      if (pill) {
+        const gearBtn = pill.querySelector('button[onclick*="openAddStoreModal"]');
+        if (gearBtn) gearBtn.style.display = 'none';
+      }
+    }
+    applyRegistryMode();
+
+    // ── Registry mode functions ──────────────────────────
+    function showPinScreen() {
+      document.getElementById('pinScreen').classList.remove('hidden');
+      document.getElementById('loading').classList.add('opacity-0', 'pointer-events-none');
+      setTimeout(() => document.getElementById('pinInput').focus(), 100);
+    }
+
+    // Helper: fetch JSON from Google Apps Script (handles redirects properly)
+    async function fetchGAS(url) {
+      const resp = await fetch(url, { redirect: 'follow' });
+      const text = await resp.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error('GAS response not JSON:', text.substring(0, 200));
+        throw new Error('Respuesta invalida del servidor');
+      }
+    }
+
+    async function handlePinSubmit() {
+      const pin = document.getElementById('pinInput').value.trim();
+      if (!pin) return;
+
+      const errorEl = document.getElementById('pinError');
+      errorEl.classList.add('hidden');
+
+      // Show loading state on button
+      const btn = document.querySelector('#pinScreen button');
+      const originalText = btn.textContent;
+      btn.textContent = 'Verificando...';
+      btn.disabled = true;
+
+      try {
+        const data = await fetchGAS(REGISTRY_URL + '?action=verify&pin=' + encodeURIComponent(pin));
+        console.log('Verify response:', JSON.stringify(data));
+
+        if (!data.valid) {
+          errorEl.textContent = 'PIN incorrecto';
+          errorEl.classList.remove('hidden');
+          btn.textContent = originalText;
+          btn.disabled = false;
+          return;
+        }
+
+        // PIN valid — save and proceed
+        REGISTRY_PIN = pin;
+        sessionStorage.setItem('ci_registry_pin', pin);
+        document.getElementById('pinScreen').classList.add('hidden');
+        document.getElementById('loading').classList.remove('opacity-0', 'pointer-events-none');
+        await loadRegistryStores();
+      } catch (err) {
+        console.error('PIN verify error:', err);
+        errorEl.textContent = 'Error de conexion. Intenta de nuevo.';
+        errorEl.classList.remove('hidden');
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    async function loadRegistryStores() {
+      try {
+        const data = await fetchGAS(REGISTRY_URL + '?action=list&pin=' + encodeURIComponent(REGISTRY_PIN));
+        console.log('Registry stores:', JSON.stringify(data));
+
+        if (data.error) {
+          // PIN expired or invalid — re-authenticate
+          console.warn('Registry error:', data.message);
+          sessionStorage.removeItem('ci_registry_pin');
+          REGISTRY_PIN = null;
+          showPinScreen();
+          return;
+        }
+
+        // Populate stores from registry (overwrite localStorage)
+        const stores = data.stores || [];
+        saveStores(stores);
+
+        if (stores.length > 0) {
+          setActiveIndex(0);
+          WEBAPP_URL = stores[0].url;
+          updateStoreSelector();
+          loadData();
+        } else {
+          // No stores in registry
+          document.getElementById('loading').classList.add('opacity-0', 'pointer-events-none');
+          const errorBanner = document.getElementById('errorBanner');
+          const errorText = document.getElementById('errorText');
+          errorText.textContent = 'No hay tiendas activas en el registro.';
+          errorBanner.classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error('Registry load error:', err);
+        document.getElementById('loading').classList.add('opacity-0', 'pointer-events-none');
+        const errorBanner = document.getElementById('errorBanner');
+        const errorText = document.getElementById('errorText');
+        errorText.textContent = 'Error al cargar tiendas del registro.';
+        errorBanner.classList.remove('hidden');
+      }
+    }
+
+    // ── Store selector UI ────────────────────────────────
+    function updateStoreSelector() {
+      const select = document.getElementById('storeSelector');
+      const stores = getStores();
+      const activeIdx = getActiveIndex();
+      select.innerHTML = '';
+      stores.forEach((store, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = store.name;
+        opt.selected = i === activeIdx;
+        select.appendChild(opt);
+      });
+    }
+
+    function handleStoreSwitch(idxStr) {
+      const idx = parseInt(idxStr);
+      const stores = getStores();
+      if (idx >= 0 && idx < stores.length) {
+        setActiveIndex(idx);
+        WEBAPP_URL = stores[idx].url;
+        loadData();
+      }
+    }
+
+    // ── Setup screen logic ───────────────────────────────
+    function handleSetupConnect() {
+      const nameInput = document.getElementById('setupStoreName');
+      const urlInput = document.getElementById('setupApiUrl');
+      const errorEl = document.getElementById('setupError');
+      const url = urlInput.value.trim();
+      const name = nameInput.value.trim() || 'Mi Tienda';
+      if (!isValidWebAppUrl(url)) {
+        errorEl.classList.remove('hidden');
+        urlInput.classList.add('border-ci-secondary');
+        return;
+      }
+      errorEl.classList.add('hidden');
+      urlInput.classList.remove('border-ci-secondary');
+      addStore(name, url);
+      WEBAPP_URL = url;
+      updateStoreSelector();
+      document.getElementById('setupScreen').classList.add('hidden');
+      loadData();
+    }
+
+    function showSetupScreen() {
+      document.getElementById('setupScreen').classList.remove('hidden');
+      document.getElementById('loading').classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    // ── Add Store Modal ──────────────────────────────────
+    function openAddStoreModal() {
+      document.getElementById('modalStoreName').value = '';
+      document.getElementById('modalApiUrl').value = '';
+      document.getElementById('modalError').classList.add('hidden');
+      renderStoreList();
+      document.getElementById('addStoreModal').classList.remove('hidden');
+    }
+
+    function closeAddStoreModal() {
+      document.getElementById('addStoreModal').classList.add('hidden');
+    }
+
+    function handleAddStore() {
+      const nameInput = document.getElementById('modalStoreName');
+      const urlInput = document.getElementById('modalApiUrl');
+      const errorEl = document.getElementById('modalError');
+      const url = urlInput.value.trim();
+      const name = nameInput.value.trim() || 'Mi Tienda';
+      if (!isValidWebAppUrl(url)) {
+        errorEl.classList.remove('hidden');
+        urlInput.classList.add('border-ci-secondary');
+        return;
+      }
+      errorEl.classList.add('hidden');
+      urlInput.classList.remove('border-ci-secondary');
+      addStore(name, url);
+      WEBAPP_URL = url;
+      updateStoreSelector();
+      closeAddStoreModal();
+      loadData();
+    }
+
+    function renderStoreList() {
+      const stores = getStores();
+      const section = document.getElementById('storeListSection');
+      const list = document.getElementById('storeList');
+      if (stores.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+      section.classList.remove('hidden');
+      const activeIdx = getActiveIndex();
+      list.innerHTML = stores.map((s, i) => `
+        <div class="flex items-center justify-between p-2.5 rounded-xl ${i === activeIdx ? 'bg-ci-primary/10 border border-ci-primary/20' : 'bg-white/5 border border-transparent'}">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="material-symbols-outlined text-[16px] ${i === activeIdx ? 'text-ci-primary' : 'text-[var(--ci-text-light)]'}">storefront</span>
+            <span class="text-sm font-medium truncate">${s.name}</span>
+            ${i === activeIdx ? '<span class="text-[10px] font-bold text-ci-primary bg-ci-primary/10 px-1.5 py-0.5 rounded-full shrink-0">ACTIVA</span>' : ''}
+          </div>
+          <button onclick="if(confirm('Eliminar ${s.name}?')){removeStore(${i});renderStoreList()}" class="size-7 flex items-center justify-center rounded-full hover:bg-red-900/20 transition shrink-0" title="Eliminar">
+            <span class="material-symbols-outlined text-[16px] text-[var(--ci-text-light)] hover:text-red-500">delete</span>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // Initialize store selector on load (skip in single mode)
+    if (!SINGLE_MODE && getStores().length > 0) updateStoreSelector();
+
+    // ── Color mode (dark/light) ────────────────────────────
+    function applyColorMode(theme) {
+      const resolved = theme === 'light' ? 'light' : 'dark';
+      document.documentElement.classList.add('dark');
+      document.documentElement.setAttribute('data-theme', resolved);
+      try { localStorage.setItem('ci-theme', resolved); } catch (e) {}
+    }
+
+    function initColorMode() {
+      let saved = 'dark';
+      try { saved = localStorage.getItem('ci-theme') || 'dark'; } catch (e) {}
+      applyColorMode(saved);
+    }
+
+    function toggleColorMode() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      applyColorMode(current === 'dark' ? 'light' : 'dark');
+      if (typeof drawAllCharts === 'function') {
+        setTimeout(() => drawAllCharts(), 30);
+      }
+    }
+
+    initColorMode();
+
+    // ── Copy dashboard link ─────────────────────────────
+    function copyDashboardLink() {
+      const base = window.location.origin + window.location.pathname;
+      let url = window.location.href;
+
+      if (WEBAPP_URL) {
+        // Check if current store has a slug (short URL)
+        const stores = getStores();
+        const activeIdx = getActiveIndex();
+        const activeStore = stores[activeIdx];
+        const slug = activeStore?.slug;
+
+        if (slug) {
+          // Short URL: ?t=slug
+          url = base + '?t=' + encodeURIComponent(slug);
+        } else {
+          // Fallback: full URL
+          const params = new URLSearchParams();
+          params.set('store', WEBAPP_URL);
+          const storeName = document.getElementById('headerStore')?.textContent;
+          if (storeName && storeName !== 'Cargando...') {
+            params.set('name', storeName);
+          }
+          url = base + '?' + params.toString();
+        }
+      }
+
+      navigator.clipboard.writeText(url).then(() => {
+        // Feedback en ambos botones (desktop + mobile)
+        ['', 'Mobile'].forEach(suffix => {
+          const label = document.getElementById('copyLinkLabel' + suffix);
+          const btn = document.getElementById('copyLinkBtn' + suffix);
+          if (label) label.textContent = 'Copiado!';
+          if (btn) btn.classList.add('border-ci-primary/50');
+          setTimeout(() => {
+            if (label) label.textContent = 'Copiar enlace';
+            if (btn) btn.classList.remove('border-ci-primary/50');
+          }, 2000);
+        });
+      }).catch(() => {
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      });
+    }
+
+    // ── Theme from API ────────────────────────────────────
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function darkenHex(hex, percent) {
+      const num = parseInt(hex.slice(1), 16);
+      const r = Math.max(0, Math.round((num >> 16) * (1 - percent / 100)));
+      const g = Math.max(0, Math.round(((num >> 8) & 0x00FF) * (1 - percent / 100)));
+      const b = Math.max(0, Math.round((num & 0x0000FF) * (1 - percent / 100)));
+      return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    function lightenHex(hex, percent) {
+      const num = parseInt(hex.slice(1), 16);
+      const r = Math.min(255, Math.round((num >> 16) + (255 - (num >> 16)) * percent / 100));
+      const g = Math.min(255, Math.round(((num >> 8) & 0x00FF) + (255 - ((num >> 8) & 0x00FF)) * percent / 100));
+      const b = Math.min(255, Math.round((num & 0x0000FF) + (255 - (num & 0x0000FF)) * percent / 100));
+      return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    function hexToRgb(hex) {
+      const num = parseInt(hex.slice(1), 16);
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+
+    function applyTheme(config) {
+      const root = document.documentElement;
+      if (config.primaryColor && /^#[0-9A-Fa-f]{6}$/.test(config.primaryColor)) {
+        root.style.setProperty('--ci-primary', config.primaryColor);
+        root.style.setProperty('--ci-primary-dark', darkenHex(config.primaryColor, 15));
+        const [r,g,b] = hexToRgb(config.primaryColor);
+        root.style.setProperty('--ci-primary-light', `rgba(${r}, ${g}, ${b}, 0.15)`);
+      }
+      if (config.accentColor && /^#[0-9A-Fa-f]{6}$/.test(config.accentColor)) {
+        root.style.setProperty('--ci-secondary', config.accentColor);
+        const [r,g,b] = hexToRgb(config.accentColor);
+        root.style.setProperty('--ci-secondary-light', `rgba(${r}, ${g}, ${b}, 0.15)`);
+      }
+      if (config.logoUrl) {
+        const el = document.getElementById('headerLogo');
+        if (el) el.innerHTML = `<img src="${escapeHtml(config.logoUrl)}" alt="Logo" class="size-8 rounded-lg object-contain">`;
+      }
+    }
+
+    // ── localStorage cache helpers ────────────────────────
+    function saveToCache(data) {
+      try {
+        localStorage.setItem('ci_cache', JSON.stringify({ data, timestamp: Date.now(), url: WEBAPP_URL }));
+      } catch {}
+    }
+
+    function loadFromCache() {
+      try {
+        const raw = localStorage.getItem('ci_cache');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        // Only use cache if it matches the current URL and is less than 24 hours old
+        if (parsed.url === WEBAPP_URL && (Date.now() - parsed.timestamp) < 24 * 60 * 60 * 1000) {
+          return parsed.data;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    }
+
+    // ── State ─────────────────────────────────────────────
+    let appData = null;
+    let selectedPeriod = null;
+    let charts = {};
+
+    // ── Tooltip / Wisdom content (plain Spanish) ──────────
+    // v2.0.0: WISDOM con nomenclatura chilena actualizada
+    const WISDOM = {
+      'Ventas Brutas (IVA incl.)': { icon: 'shopping_bag',   text: 'Total facturado antes de descuentos. Incluye IVA (19%). Es el numero mas grande pero no refleja la ganancia real.', formula: 'Σ (subtotal_price + total_discounts)\nde todos los pedidos con financial_status = "paid"' },
+      'Ingresos Netos (sin IVA)':  { icon: 'storefront',     text: 'Lo que realmente ingresa despues de restar devoluciones, descuentos e IVA. Esta es la base real de tu negocio.', formula: 'Facturacion − IVA Debito Fiscal' },
+      'Margen Bruto %':            { icon: 'percent',        text: 'De cada $100 que vendes, cuanto queda despues de pagar productos, picking y envios? Mientras mas alto, mejor.', formula: '(Ingresos Netos − Costo Productos − Picking − Envios) / Ingresos Netos × 100' },
+      'Gasto Ads (Meta)':          { icon: 'campaign',       text: 'Cuanto invertiste en publicidad de Meta (Facebook e Instagram) este mes.', formula: 'Σ spend de todas las campañas activas en Meta Ads' },
+      'MER (ROAS General)':        { icon: 'ads_click',      text: 'Marketing Efficiency Ratio. Por cada $1 que gastas en publicidad, cuanto factura tu negocio en total? Incluye ventas organicas.', formula: 'Facturacion (con IVA) / Gasto Total en Ads' },
+      'ROAS Meta':                 { icon: 'target',         text: 'Return On Ad Spend de Meta. Por cada $1 en Meta Ads, cuanto generan directamente esos anuncios?', formula: 'Revenue atribuido a Meta / Gasto Meta Ads' },
+      'CPA':                       { icon: 'person_add',     text: 'Costo Por Adquisicion. Cuanto cuesta en promedio conseguir cada venta? Mas bajo = mas eficiente.', formula: 'Gasto Meta Ads / Numero de compras atribuidas' },
+      'Utilidad Operacional':      { icon: 'savings',        text: 'La ganancia real despues de pagar absolutamente todo: productos, ads, envios, comisiones, arriendos, etc.', formula: 'Margen Bruto − Total Gastos Operacionales' },
+      'Utilidad Operacional %':    { icon: 'trending_up',    text: 'De cada $100 vendidos, cuanto queda como ganancia final? Es el indicador definitivo de rentabilidad.', formula: 'Utilidad Operacional / Ingresos Netos × 100' },
+      'Break-even ROAS':           { icon: 'balance',        text: 'ROAS minimo que necesitas para no perder dinero. Si tu MER cae por debajo de este numero, estas operando a perdida.', formula: 'Facturacion / (Margen Bruto − Gastos no-ads)' },
+    };
+
+    // v2.0.0: PNL_INFO actualizado con nueva estructura P&L
+    const PNL_INFO = {
+      '(+) Ventas Brutas (IVA incl.)':  { text: 'Total facturado antes de descuentos. Incluye IVA (19%).', formula: 'Σ (subtotal_price + total_discounts) de pedidos pagados' },
+      '(i) Devoluciones*':              { text: 'Pedidos devueltos o reembolsados. Informativa: ya excluidos de Ventas Brutas.', formula: 'Σ pedidos con financial_status = "refunded"' },
+      '(-) Descuentos':                 { text: 'Total de descuentos aplicados en pedidos.', formula: 'Σ total_discounts de todos los pedidos' },
+      '(=) Facturacion (con IVA)':      { text: 'Ventas despues de restar descuentos mas envios cobrados, aun incluye IVA.', formula: 'Ventas Brutas − Descuentos + Envios Cobrados' },
+      '(-) IVA Debito Fiscal':          { text: 'Impuesto al valor agregado incluido en la facturacion. Se paga al SII.', formula: 'Facturacion × Tasa IVA / (1 + Tasa IVA)' },
+      '(=) Ingresos Netos (sin IVA)':   { text: 'Ingresos reales despues de impuestos. Esta es la base del P&L.', formula: 'Facturacion − IVA Debito Fiscal' },
+      '(-) Costo de Productos':         { text: 'Costo de los productos vendidos.', formula: 'Por porcentaje fijo o por producto segun CONFIG' },
+      '(-) Picking y Packing':          { text: 'Costo de preparar y embalar cada pedido.', formula: 'Numero de pedidos pagados × Costo por pedido (CONFIG)' },
+      '(-) Costo Total Envios':         { text: 'Costo real de despacho: courier pagados (pass-through) + courier envios gratis.', formula: 'Recaudado en Envios + (Pedidos envio gratis × costo courier CONFIG)' },
+      '(=) Margen Bruto':               { text: 'Lo que queda despues de pagar productos, packing y envios.', formula: 'Ingresos Netos − Costo Productos − Picking − Envios' },
+      '(-) Gasto Ads (Meta)':           { text: 'Inversion total en Meta Ads (Facebook + Instagram).', formula: 'Σ spend de campañas Meta del periodo' },
+      '(-) Comision Pasarela':          { text: 'Comision del procesador de pago (ej: Transbank, MercadoPago).', formula: 'Facturacion × 3.49% (CONFIG)' },
+      '(-) Comision Shopify':           { text: 'Comision de Shopify sobre las ventas.', formula: 'Facturacion × 1% (CONFIG)' },
+      '(-) Gastos Fijos':               { text: 'Gastos que no varian con las ventas (arriendos, sueldos, software).', formula: 'Definidos manualmente en hoja GASTOS_FIJOS' },
+      '(-) Gastos Variables':           { text: 'Gastos que varian con el volumen de ventas.', formula: 'Definidos en hoja GASTOS_VARIABLES' },
+      '(=) Total Gastos Op.':           { text: 'Suma de todos los gastos operativos.', formula: 'Ads + Comisiones + Fijos + Variables' },
+      '(=) UTILIDAD OPERACIONAL':       { text: 'La ganancia final despues de todos los gastos.', formula: 'Margen Bruto − Total Gastos Operacionales' },
+    };
+
+    // ── KPI icon map ──────────────────────────────────────
+    // v2.0.0: KPI_ICONS con nombres actualizados
+    const KPI_ICONS = {
+      'Ventas Brutas (IVA incl.)': 'shopping_bag', 'Ingresos Netos (sin IVA)': 'storefront', 'Margen Bruto %': 'percent',
+      'Gasto Ads (Meta)': 'campaign', 'MER (ROAS General)': 'ads_click', 'ROAS Meta': 'target',
+      'CPA': 'person_add', 'Utilidad Operacional': 'savings', 'Utilidad Operacional %': 'trending_up',
+      'Break-even ROAS': 'balance',
+    };
+
+    // ── KPI colored icon backgrounds ─────────────────────
+    const ICON_COLORS = {
+      'Ingresos Netos (sin IVA)': { bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
+      'Utilidad Operacional':     { bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
+      'Margen Bruto %':           { bg: 'bg-amber-500/10', text: 'text-amber-400' },
+      'Ventas Brutas (IVA incl.)': { bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
+      'Gasto Ads (Meta)':         { bg: 'bg-rose-500/10', text: 'text-rose-400' },
+      'MER (ROAS General)':       { bg: 'bg-blue-500/10', text: 'text-blue-400' },
+      'ROAS Meta':                { bg: 'bg-indigo-500/10', text: 'text-indigo-400' },
+      'CPA':                      { bg: 'bg-orange-500/10', text: 'text-orange-400' },
+      'Utilidad Operacional %':   { bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
+      'Break-even ROAS':          { bg: 'bg-purple-500/10', text: 'text-purple-400' },
+    };
+
+    // Hero KPIs (indices 0,1,2 of the kpis array): Ingresos Netos (idx 1), Utilidad Op (idx 7), Margen Bruto % (idx 2)
+    const HERO_KPI_INDICES = [1, 7, 2];
+    const SECONDARY_KPI_INDICES = [0, 3, 4, 5, 6, 8, 9];
+
+    // ── P&L narrative icons & colors ──────────────────────
+    // v2.0.0: PNL_STEPS actualizado con nueva estructura P&L
+    const PNL_STEPS = {
+      '(+) Ventas Brutas (IVA incl.)':  { icon: 'shopping_bag',        color: 'teal',  type: 'income' },
+      '(i) Devoluciones*':              { icon: 'remove_shopping_cart', color: 'gold',  type: 'info' },
+      '(-) Descuentos':                 { icon: 'sell',                color: 'gold',  type: 'deduction' },
+      '(=) Facturacion (con IVA)':      { icon: 'storefront',          color: 'teal',  type: 'subtotal' },
+      '(-) IVA Debito Fiscal':          { icon: 'receipt_long',        color: 'gold',  type: 'deduction' },
+      '(=) Ingresos Netos (sin IVA)':   { icon: 'store',              color: 'teal',  type: 'subtotal' },
+      '(-) Costo de Productos':         { icon: 'inventory_2',         color: 'terra', type: 'deduction' },
+      '(-) Picking y Packing':          { icon: 'package_2',           color: 'terra', type: 'deduction' },
+      '(-) Costo Total Envios':         { icon: 'local_shipping',      color: 'terra', type: 'deduction' },
+      '(=) Margen Bruto':               { icon: 'analytics',           color: 'teal',  type: 'subtotal' },
+      '(-) Gasto Ads (Meta)':           { icon: 'campaign',            color: 'terra', type: 'deduction' },
+      '(-) Comision Pasarela':          { icon: 'credit_card',         color: 'terra', type: 'deduction' },
+      '(-) Comision Shopify':           { icon: 'shopping_cart',        color: 'terra', type: 'deduction' },
+      '(-) Gastos Fijos':               { icon: 'home_work',           color: 'terra', type: 'deduction' },
+      '(-) Gastos Variables':           { icon: 'tune',                color: 'terra', type: 'deduction' },
+      '(=) Total Gastos Op.':           { icon: 'account_balance',     color: 'gold',  type: 'subtotal' },
+      '(=) UTILIDAD OPERACIONAL':       { icon: 'diamond',             color: 'final', type: 'final' },
+    };
+
+    // ── Format helpers ────────────────────────────────────
+    const fmtMoney = v => (v == null || isNaN(v)) ? '-' : '$' + Math.round(v).toLocaleString('es-CL');
+    const fmtPct   = v => (v == null || isNaN(v)) ? '-' : (v * 100).toFixed(1) + '%';
+    const fmtNum   = v => (v == null || isNaN(v)) ? '-' : Number(v).toFixed(2);
+
+    function fmtKPI(name, value) {
+      if (name.includes('%')) return fmtPct(value);
+      if (['MER', 'ROAS', 'Break-even'].some(k => name.includes(k))) return fmtNum(value);
+      return fmtMoney(value);
+    }
+
+    function fmtPeriodFull(p) {
+      if (!p) return '--';
+      const parts = String(p).split('-');
+      const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      if (parts.length === 2) return months[parseInt(parts[1],10)-1] + ' ' + parts[0];
+      return p;
+    }
+
+    function fmtPeriodShort(p) {
+      if (!p) return '--';
+      const parts = String(p).split('-');
+      const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      if (parts.length === 2) return months[parseInt(parts[1],10)-1] + ' ' + parts[0];
+      return p;
+    }
+
+    function shortMonth(p) {
+      if (!p) return '';
+      const parts = String(p).split('-');
+      const m = ['E','F','M','A','M','J','J','A','S','O','N','D'];
+      if (parts.length === 2) return m[parseInt(parts[1],10)-1] + "'" + parts[0].slice(2);
+      return p;
+    }
+
+    function getPrevPeriod(p) {
+      const [y, m] = String(p).split('-').map(Number);
+      return m === 1 ? `${y-1}-12` : `${y}-${String(m-1).padStart(2,'0')}`;
+    }
+
+    function pctChange(curr, prev) {
+      if (!prev || prev === 0) return null;
+      return (curr - prev) / Math.abs(prev);
+    }
+
+    // ── Chart.js defaults ─────────────────────────────────
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#8b949e';
+    Chart.defaults.plugins.legend.position = 'bottom';
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.padding = 14;
+    Chart.defaults.animation.duration = 400;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+
+    // ── Data Loading ──────────────────────────────────────
+    async function loadData() {
+      if (!WEBAPP_URL) {
+        showSetupScreen();
+        return;
+      }
+
+      const loading = document.getElementById('loading');
+      const errBanner = document.getElementById('errorBanner');
+      const cacheBanner = document.getElementById('cacheBanner');
+      loading.classList.remove('opacity-0', 'pointer-events-none');
+      errBanner.classList.add('hidden');
+      cacheBanner.classList.add('hidden');
+
+      try {
+        // Python backend: WEBAPP_URL already contains the full API URL
+        const fetchUrl = WEBAPP_URL;
+        const resp = await fetch(fetchUrl);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        if (data.error) throw new Error(data.message || 'Error del servidor');
+
+        appData = data;
+
+        // Cache successfully loaded data (skip in single mode)
+        if (!SINGLE_MODE) saveToCache(data);
+
+        // Apply theme from config
+        if (data.config) applyTheme(data.config);
+
+        // Populate month selector
+        populateMonthSelector(data);
+
+        // Default to active period
+        if (!selectedPeriod) {
+          selectedPeriod = data.config?.periodoActivo || null;
+          document.getElementById('monthSelector').value = selectedPeriod;
+        }
+
+        // Render everything for selected period
+        renderForPeriod(selectedPeriod);
+
+        // Trend charts & historical table always show all data
+        renderTrendCharts(data.historico);
+        renderHistTable(data.historico);
+
+        // Header — update store name from API
+        const apiStoreName = data.config?.storeName || SINGLE_STORE_NAME || 'Tienda';
+        document.getElementById('headerStore').textContent = apiStoreName;
+
+        // In single mode: update page title and skip localStorage
+        if (SINGLE_MODE) {
+          document.title = apiStoreName + ' — Dashboard';
+        } else {
+          // Auto-update stored name with the name from the API
+          const stores = getStores();
+          const activeIdx = getActiveIndex();
+          if (stores[activeIdx] && stores[activeIdx].name !== apiStoreName) {
+            stores[activeIdx].name = apiStoreName;
+            saveStores(stores);
+            updateStoreSelector();
+          }
+        }
+        const dt = new Date(data.generatedAt);
+        document.getElementById('headerUpdated').textContent =
+          dt.toLocaleDateString('es-CL') + ' ' + dt.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
+        document.getElementById('footerVersion').textContent = 'v' + data.version;
+      } catch (err) {
+        console.error('Load error:', err);
+
+        // Try to load from cache
+        const cached = loadFromCache();
+        if (cached && !appData) {
+          appData = cached;
+
+          // Apply theme from cached config
+          if (cached.config) applyTheme(cached.config);
+
+          populateMonthSelector(cached);
+          if (!selectedPeriod) {
+            selectedPeriod = cached.config?.periodoActivo || null;
+            document.getElementById('monthSelector').value = selectedPeriod;
+          }
+          renderForPeriod(selectedPeriod);
+          renderTrendCharts(cached.historico);
+          renderHistTable(cached.historico);
+          document.getElementById('headerStore').textContent = cached.config?.storeName || 'Tienda';
+          if (cached.generatedAt) {
+            const dt = new Date(cached.generatedAt);
+            document.getElementById('headerUpdated').textContent =
+              dt.toLocaleDateString('es-CL') + ' ' + dt.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'}) + ' (cache)';
+          }
+          if (cached.version) document.getElementById('footerVersion').textContent = 'v' + cached.version;
+
+          // Show cache warning
+          cacheBanner.classList.remove('hidden');
+        } else if (!appData) {
+          document.getElementById('errorText').textContent = 'Error al cargar: ' + err.message;
+          errBanner.classList.remove('hidden');
+        }
+      } finally {
+        loading.classList.add('opacity-0', 'pointer-events-none');
+      }
+    }
+
+    // ── Month Selector ────────────────────────────────────
+    function populateMonthSelector(data) {
+      const sel = document.getElementById('monthSelector');
+      const periods = [];
+
+      // Collect all periods from historico
+      if (data.historico) {
+        data.historico.forEach(h => {
+          if (h.periodo && !periods.includes(String(h.periodo))) {
+            periods.push(String(h.periodo));
+          }
+        });
+      }
+
+      // Add active period if not in historico
+      const active = String(data.config?.periodoActivo || '');
+      if (active && !periods.includes(active)) periods.push(active);
+
+      // Sort chronologically (newest first)
+      periods.sort((a, b) => b.localeCompare(a));
+
+      sel.innerHTML = '';
+      periods.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = fmtPeriodShort(p);
+        if (p === active) opt.textContent += ' (actual)';
+        sel.appendChild(opt);
+      });
+
+      sel.value = selectedPeriod || active;
+    }
+
+    document.getElementById('monthSelector').addEventListener('change', function() {
+      selectedPeriod = this.value;
+      if (appData) renderForPeriod(selectedPeriod);
+    });
+
+    // ── Render for selected period ────────────────────────
+    function renderForPeriod(period) {
+      const data = appData;
+      if (!data) return;
+
+      const active = String(data.config?.periodoActivo || '');
+      const isActive = (period === active);
+
+      let kpis, pnl;
+      if (isActive) {
+        kpis = data.kpis || [];
+        pnl = data.pnl || [];
+      } else {
+        // Derive from historico
+        const h = (data.historico || []).find(x => String(x.periodo) === period);
+        if (!h) return;
+        kpis = kpisFromHistorico(h, data);
+        pnl = pnlFromHistorico(h);
+      }
+
+      // Find current and previous month data for comparisons
+      const hist = data.historico || [];
+      const currHist = hist.find(x => String(x.periodo) === period);
+      const prevPeriod = getPrevPeriod(period);
+      const prevHist = hist.find(x => String(x.periodo) === prevPeriod);
+
+      renderHero(kpis, currHist, prevHist, period);
+      renderHeroKPIs(kpis, currHist, prevHist);
+      renderSecondaryKPIs(kpis);
+      renderMoneyFlow(pnl, isActive);
+      renderPnLTable(pnl, isActive);
+      renderWisdomCards(kpis);
+      renderQuickStats(kpis, currHist, prevHist);
+    }
+
+    // ── Derive KPIs from historico ────────────────────────
+    function kpisFromHistorico(h, data) {
+      const targets = extractTargets(data);
+      const mk = (name, value, target) => {
+        let status = '';
+        if (target && value != null) {
+          if (value >= target) status = 'OK';
+          else if (value >= target * 0.85) status = 'ALERTA';
+          else status = 'CRITICO';
+        }
+        return { name, value, target: target || '', status };
+      };
+      // v2.0.0: keys actualizados (ventasTotales, ingresosNetos, utilidadOp)
+      return [
+        mk('Ventas Brutas (IVA incl.)', h.ventasTotales, null),
+        mk('Ingresos Netos (sin IVA)', h.ingresosNetos, null),
+        mk('Margen Bruto %', h.margenBrutoPct, targets.margen),
+        mk('Gasto Ads (Meta)', h.gastoAds, null),
+        mk('MER (ROAS General)', h.mer, targets.mer),
+        mk('ROAS Meta', h.roasMeta, targets.roasMeta),
+        mk('CPA', h.cpa, null),
+        mk('Utilidad Operacional', h.utilidadOp, null),
+        mk('Utilidad Operacional %', h.utilidadOpPct, targets.utilidad),
+        mk('Break-even ROAS', null, null),
+      ];
+    }
+
+    function extractTargets(data) {
+      // Extract targets from the active kpis array
+      const kpis = data.kpis || [];
+      const find = name => {
+        const k = kpis.find(x => x.name === name);
+        return k ? k.target : null;
+      };
+      return {
+        margen: find('Margen Bruto %'),
+        mer: find('MER (ROAS General)'),
+        roasMeta: find('ROAS Meta'),
+        utilidad: find('Utilidad Operacional %'),
+      };
+    }
+
+    // v2.0.0: pnlFromHistorico con nueva nomenclatura
+    function pnlFromHistorico(h) {
+      const vn = h.ingresosNetos || 1;
+      return [
+        { concept: '(+) Ventas Brutas (IVA incl.)', amount: h.ventasTotales, pctOfSales: h.ventasTotales / vn },
+        { concept: '(-) Costo de Productos', amount: h.costoProductos, pctOfSales: h.costoProductos / vn },
+        { concept: '(=) Margen Bruto', amount: h.margenBruto, pctOfSales: h.margenBrutoPct },
+        { concept: '(-) Gasto Ads (Meta)', amount: h.gastoAds, pctOfSales: h.gastoAds / vn },
+        { concept: '(-) Otros Gastos', amount: (h.totalGastosOp||0) - (h.gastoAds||0), pctOfSales: ((h.totalGastosOp||0) - (h.gastoAds||0)) / vn },
+        { concept: '(=) Total Gastos Op.', amount: h.totalGastosOp, pctOfSales: h.totalGastosOp / vn },
+        { concept: '(=) UTILIDAD OPERACIONAL', amount: h.utilidadOp, pctOfSales: h.utilidadOpPct },
+      ];
+    }
+
+    // ── Render: Hero ──────────────────────────────────────
+    function renderHero(kpis, currHist, prevHist, period) {
+      const utilKpi = kpis.find(k => k.name === 'Utilidad Operacional');
+      const ventasKpi = kpis.find(k => k.name === 'Ingresos Netos (sin IVA)');
+      const util = utilKpi?.value || 0;
+      const ventas = ventasKpi?.value || 0;
+
+      // Status
+      const statusEl = document.getElementById('heroStatusLabel');
+      const pingEl = document.getElementById('heroPingDot');
+      const dotEl = document.getElementById('heroStaticDot');
+
+      let statusText, statusBgClass;
+      if (util > 0) {
+        statusText = 'Negocio Rentable';
+        statusBgClass = 'bg-ci-primary-dark';
+        statusEl.className = 'text-xs font-bold uppercase tracking-wider text-ci-primary-dark';
+      } else if (util === 0) {
+        statusText = 'En Punto de Equilibrio';
+        statusBgClass = 'bg-amber-500';
+        statusEl.className = 'text-xs font-bold uppercase tracking-wider text-amber-500';
+      } else {
+        statusText = 'Atencion: Perdida';
+        statusBgClass = 'bg-ci-secondary';
+        statusEl.className = 'text-xs font-bold uppercase tracking-wider text-ci-secondary';
+      }
+
+      statusEl.textContent = statusText;
+      pingEl.className = `animate-ping absolute inline-flex h-full w-full rounded-full ${statusBgClass} opacity-75`;
+      dotEl.className = `relative inline-flex rounded-full h-2.5 w-2.5 ${statusBgClass}`;
+
+      // Headline
+      const headline = document.getElementById('heroHeadline');
+      if (util >= 0) {
+        headline.innerHTML = `Ganaste <span class="text-ci-primary-dark">${fmtMoney(util)}</span> en ${fmtPeriodFull(period)}`;
+      } else {
+        headline.innerHTML = `Perdiste <span class="text-ci-secondary">${fmtMoney(Math.abs(util))}</span> en ${fmtPeriodFull(period)}`;
+      }
+
+      // Subtitle with comparison
+      const sub = document.getElementById('heroSubtitle');
+      if (currHist && prevHist) {
+        const chg = pctChange(currHist.utilidadOp, prevHist.utilidadOp);
+        const chgVentas = pctChange(currHist.ingresosNetos, prevHist.ingresosNetos);
+        let parts = [`Facturaste ${fmtMoney(ventas)} netos.`];
+        if (chg !== null) {
+          const sign = chg >= 0 ? '+' : '';
+          const color = chg >= 0 ? 'text-ci-primary-dark font-bold' : 'text-ci-secondary font-bold';
+          parts.push(`Utilidad <span class="${color}">${sign}${(chg*100).toFixed(1)}%</span> vs mes anterior.`);
+        }
+        if (chgVentas !== null) {
+          const sign = chgVentas >= 0 ? '+' : '';
+          parts.push(`Ventas ${sign}${(chgVentas*100).toFixed(1)}%.`);
+        }
+        sub.innerHTML = parts.join(' ');
+      } else {
+        sub.innerHTML = `Facturaste ${fmtMoney(ventas)} netos este periodo.`;
+      }
+    }
+
+    // ── Render: Hero KPIs ─────────────────────────────────
+    function renderHeroKPIs(kpis, currHist, prevHist) {
+      HERO_KPI_INDICES.forEach((idx, i) => {
+        const kpi = kpis[idx];
+        if (!kpi) return;
+        const el = document.getElementById('heroKpi' + i);
+        const icon = KPI_ICONS[kpi.name] || 'monitoring';
+        const w = WISDOM[kpi.name];
+
+        // Calculate change
+        let changeBadge = '';
+        if (currHist && prevHist) {
+          const fieldMap = { 'Ingresos Netos (sin IVA)': 'ingresosNetos', 'Utilidad Operacional': 'utilidadOp', 'Margen Bruto %': 'margenBrutoPct' };
+          const field = fieldMap[kpi.name];
+          if (field) {
+            const chg = pctChange(currHist[field], prevHist[field]);
+            if (chg !== null) {
+              const sign = chg >= 0 ? '+' : '';
+              const badgeBg = chg >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400';
+              const arrow = chg >= 0 ? 'trending_up' : 'trending_down';
+              changeBadge = `<span class="${badgeBg} px-2.5 py-1 rounded-lg text-xs font-bold inline-flex items-center gap-1">
+                <span class="material-symbols-outlined text-[13px]">${arrow}</span>${sign}${(chg*100).toFixed(1)}%
+              </span>`;
+            }
+          }
+        }
+
+        // Status ring
+        let ring = '';
+        if (kpi.status === 'ALERTA') ring = 'ring-1 ring-amber-400/30';
+        else if (kpi.status === 'CRITICO') ring = 'ring-1 ring-ci-secondary/30';
+
+        // Target line
+        let targetLine = '';
+        if (kpi.target !== '' && kpi.target != null) {
+          targetLine = `<span class="text-xs text-[var(--ci-text-muted)]">Meta: ${fmtKPI(kpi.name, kpi.target)}</span>`;
+        }
+
+        // Icon color badge
+        const ic = ICON_COLORS[kpi.name] || { bg: 'bg-white/5', text: 'text-[var(--ci-text-light)]' };
+
+        el.className = `glass-card p-5 sm:p-6 rounded-2xl hover:shadow-float hover:border-ci-primary/30 transition-all duration-300 relative overflow-hidden group ${ring}`;
+        el.innerHTML = `
+          <div class="flex justify-between items-start mb-4">
+            <div class="p-2.5 rounded-xl ${ic.bg}">
+              <span class="material-symbols-outlined text-xl ${ic.text}">${icon}</span>
+            </div>
+            ${changeBadge}
+          </div>
+          <p class="text-sm font-medium text-[var(--ci-text-light)] mb-1 flex items-center gap-1.5">
+            ${kpi.name}
+            ${w ? `<button onclick="showTooltip('${kpi.name}', event)" class="info-trigger material-symbols-outlined text-[15px] text-[var(--ci-text-muted)]">info</button>` : ''}
+          </p>
+          <h3 class="text-2xl sm:text-3xl font-bold mb-2">${fmtKPI(kpi.name, kpi.value)}</h3>
+          <div class="flex items-center gap-2 flex-wrap">
+            ${targetLine}
+          </div>
+        `;
+      });
+    }
+
+    // ── Render: Secondary KPIs ────────────────────────────
+    function renderSecondaryKPIs(kpis) {
+      const grid = document.getElementById('secKpisGrid');
+      grid.innerHTML = '';
+
+      SECONDARY_KPI_INDICES.forEach(idx => {
+        const kpi = kpis[idx];
+        if (!kpi) return;
+        if (kpi.value == null && kpi.name === 'Break-even ROAS') return; // Skip if no data
+        const icon = KPI_ICONS[kpi.name] || 'monitoring';
+
+        let statusDot = '';
+        if (kpi.status === 'OK') statusDot = '<div class="w-1.5 h-1.5 rounded-full bg-ci-primary-dark absolute top-2 right-2"></div>';
+        else if (kpi.status === 'ALERTA') statusDot = '<div class="w-1.5 h-1.5 rounded-full bg-amber-500 absolute top-2 right-2"></div>';
+        else if (kpi.status === 'CRITICO') statusDot = '<div class="w-1.5 h-1.5 rounded-full bg-ci-secondary absolute top-2 right-2"></div>';
+
+        const w = WISDOM[kpi.name];
+        const card = document.createElement('div');
+        card.className = 'glass-card p-3 sm:p-4 rounded-xl relative hover:shadow-soft hover:border-ci-primary/30 transition-all';
+        card.innerHTML = `
+          ${statusDot}
+          <div class="flex items-center gap-1.5 mb-1">
+            <span class="material-symbols-outlined text-[14px] text-[var(--ci-text-light)]">${icon}</span>
+            <span class="text-[10px] sm:text-xs font-medium text-[var(--ci-text-light)] uppercase tracking-wide truncate">${kpi.name}</span>
+            ${w ? `<button onclick="showTooltip('${kpi.name}', event)" class="info-trigger material-symbols-outlined text-[13px] text-[var(--ci-text-muted)] ml-auto shrink-0">info</button>` : ''}
+          </div>
+          <div class="text-base sm:text-lg font-bold tabular-nums">${fmtKPI(kpi.name, kpi.value)}</div>
+          ${kpi.target ? `<div class="text-[10px] text-[var(--ci-text-muted)] mt-0.5">Meta: ${fmtKPI(kpi.name, kpi.target)}</div>` : ''}
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // ── Render: Money Flow Narrative ──────────────────────
+    function renderMoneyFlow(pnl, isActive) {
+      const container = document.getElementById('moneyFlow');
+      container.innerHTML = '';
+      if (!pnl || pnl.length === 0) return;
+
+      // Vertical connecting line
+      const line = document.createElement('div');
+      line.className = 'absolute left-7 top-4 bottom-4 w-0.5 bg-gradient-to-b from-ci-primary/30 via-amber-400/20 to-white/10';
+      container.appendChild(line);
+
+      pnl.forEach((item, i) => {
+        const step = PNL_STEPS[item.concept];
+        const isLast = (i === pnl.length - 1);
+        const isSub = step?.type === 'subtotal';
+        const isFinal = step?.type === 'final' || isLast;
+        const color = step?.color || 'slate';
+        const icon = step?.icon || 'receipt_long';
+
+        // Color classes for icon background
+        let iconBg, iconText;
+        if (color === 'teal') { iconBg = 'bg-[var(--ci-primary-light)]'; iconText = 'text-[var(--ci-primary)]'; }
+        else if (color === 'gold') { iconBg = 'bg-[var(--ci-warn-light)]'; iconText = 'text-[var(--ci-warn)]'; }
+        else if (color === 'terra') { iconBg = 'bg-[var(--ci-secondary-light)]'; iconText = 'text-[var(--ci-secondary)]'; }
+        else if (color === 'final') { iconBg = 'bg-[#0d1117]'; iconText = 'text-[var(--ci-primary)]'; }
+        else { iconBg = 'bg-[var(--ci-bg-alt)]'; iconText = 'text-[var(--ci-text-light)]'; }
+
+        const amountColor = isFinal
+          ? (item.amount >= 0 ? 'text-ci-primary-dark' : 'text-ci-secondary')
+          : (step?.type === 'deduction' ? 'text-ci-secondary' : 'text-[var(--ci-text)]');
+
+        const wrapClass = isFinal
+          ? 'glass-card p-4 sm:p-5 rounded-xl border-ci-primary/20'
+          : isSub
+            ? 'bg-white/5 p-3 sm:p-4 rounded-xl'
+            : 'p-3 sm:p-4 rounded-xl hover:bg-white/5 transition';
+
+        const pnlInfo = PNL_INFO[item.concept];
+        const div = document.createElement('div');
+        div.className = `relative flex items-center gap-4 sm:gap-5 ${isLast ? '' : 'mb-3'} group`;
+        div.innerHTML = `
+          <div class="size-12 sm:size-14 rounded-2xl ${iconBg} flex items-center justify-center shrink-0 z-10 shadow-sm group-hover:scale-105 transition-transform duration-300">
+            <span class="material-symbols-outlined ${iconText} text-xl sm:text-2xl">${icon}</span>
+          </div>
+          <div class="flex-1 ${wrapClass}">
+            <div class="flex justify-between items-center gap-2">
+              <h4 class="${isFinal ? 'font-bold text-base' : isSub ? 'font-semibold text-sm' : 'font-medium text-sm'} text-[var(--ci-text)] flex items-center gap-1.5">
+                ${item.concept.replace(/^\([+=\-]\)\s*/, '')}
+                ${pnlInfo ? `<button onclick="showTooltip('${item.concept.replace(/'/g, "\\'")}', event)" class="info-trigger material-symbols-outlined text-[13px] text-[var(--ci-text-muted)] shrink-0">info</button>` : ''}
+              </h4>
+              <span class="${isFinal ? 'font-black text-xl sm:text-2xl' : isSub ? 'font-bold text-base' : 'font-semibold text-sm'} ${amountColor} tabular-nums whitespace-nowrap">
+                ${fmtMoney(item.amount)}
+              </span>
+            </div>
+            ${item.pctOfSales && !isFinal ? `<p class="text-xs text-[var(--ci-text-muted)] mt-0.5">${fmtPct(item.pctOfSales)} de ventas</p>` : ''}
+            ${isFinal && item.pctOfSales ? `<p class="text-xs text-[var(--ci-text-light)] mt-1">${fmtPct(item.pctOfSales)} margen neto</p>` : ''}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      // Show note for simplified historico P&L
+      if (!isActive) {
+        const note = document.createElement('p');
+        note.className = 'text-xs text-[var(--ci-text-muted)] mt-4 italic text-center';
+        note.textContent = 'Vista simplificada para meses anteriores. El P\u0026L completo solo esta disponible para el periodo activo.';
+        container.appendChild(note);
+      }
+    }
+
+    // ── Render: P&L Detail Table ──────────────────────────
+    function renderPnLTable(pnl, isActive) {
+      const tbody = document.getElementById('pnlTableBody');
+      tbody.innerHTML = '';
+      if (!pnl) return;
+
+      const lastIdx = pnl.length - 1;
+      const subtotalConcepts = ['(=) Facturacion (con IVA)', '(=) Ingresos Netos (sin IVA)', '(=) Margen Bruto', '(=) Total Gastos Op.'];
+
+      pnl.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        const isFinal = idx === lastIdx;
+        const isSub = subtotalConcepts.includes(item.concept);
+
+        let rowClass = 'border-b border-[var(--ci-border-light)]';
+        if (isFinal) rowClass = 'bg-[#0d1117] text-white font-bold';
+        else if (isSub) rowClass = 'bg-white/5 font-semibold';
+
+        tr.className = rowClass;
+        tr.innerHTML = `
+          <td class="py-2 px-3 ${isFinal ? 'text-white' : ''}">${item.concept}</td>
+          <td class="py-2 px-3 text-right tabular-nums ${isFinal ? 'text-ci-primary' : item.amount < 0 ? 'text-ci-secondary' : ''}">${fmtMoney(item.amount)}</td>
+          <td class="py-2 px-3 text-right tabular-nums ${isFinal ? 'text-white/70' : 'text-[var(--ci-text-light)]'}">${item.pctOfSales ? fmtPct(item.pctOfSales) : ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function togglePnlDetail() {
+      const wrap = document.getElementById('pnlDetailWrap');
+      wrap.classList.toggle('hidden');
+    }
+
+    // ── Render: Wisdom Cards ──────────────────────────────
+    function renderWisdomCards(kpis) {
+      const container = document.getElementById('wisdomCards');
+      container.innerHTML = '';
+
+      // Show 3 random wisdom items for KPIs that have status (most relevant)
+      const relevant = kpis.filter(k => k.status && WISDOM[k.name]);
+      const others = kpis.filter(k => !k.status && WISDOM[k.name]);
+      const pool = [...relevant, ...others].slice(0, 4);
+
+      pool.forEach(kpi => {
+        const w = WISDOM[kpi.name];
+        if (!w) return;
+        const card = document.createElement('div');
+        card.className = 'bg-white/5 p-4 rounded-xl border border-white/5 backdrop-blur-sm';
+        card.innerHTML = `
+          <h4 class="font-semibold text-sm mb-1 flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px] text-ci-primary-dark">${w.icon}</span>
+            ${kpi.name}
+            ${w.formula ? `<button onclick="showTooltip('${kpi.name}', event)" class="info-trigger material-symbols-outlined text-[13px] text-[var(--ci-text-muted)] ml-auto shrink-0">info</button>` : ''}
+          </h4>
+          <p class="text-xs text-[var(--ci-text-light)] leading-relaxed">${w.text}</p>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function showTooltip(name, event) {
+      const w = WISDOM[name] || PNL_INFO[name];
+      if (!w) return;
+      event.stopPropagation();
+      const tooltip = document.getElementById('infoTooltip');
+      const titleEl = document.getElementById('tooltipTitle');
+      const descEl = document.getElementById('tooltipDesc');
+      const formulaEl = document.getElementById('tooltipFormulaText');
+      const formulaWrap = document.getElementById('tooltipFormula');
+
+      titleEl.textContent = name.replace(/^\([+=\-]\)\s*/, '');
+      descEl.textContent = w.text;
+      if (w.formula) {
+        formulaEl.textContent = w.formula;
+        formulaWrap.classList.remove('hidden');
+      } else {
+        formulaWrap.classList.add('hidden');
+      }
+
+      // Position
+      const rect = event.currentTarget.getBoundingClientRect();
+      tooltip.classList.remove('hidden');
+
+      // Calculate position - try below the icon, or above if not enough space
+      const tooltipH = tooltip.offsetHeight;
+      let top = rect.bottom + 8;
+      if (top + tooltipH > window.innerHeight - 16) {
+        top = rect.top - tooltipH - 8;
+      }
+      let left = rect.left - 110;
+      left = Math.max(8, Math.min(left, window.innerWidth - 296));
+
+      tooltip.style.top = top + 'px';
+      tooltip.style.left = left + 'px';
+    }
+
+    function hideTooltip() {
+      document.getElementById('infoTooltip').classList.add('hidden');
+    }
+
+    // Close tooltip when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#infoTooltip') && !e.target.closest('.info-trigger')) {
+        hideTooltip();
+      }
+    });
+
+    // ── Render: Quick Stats ───────────────────────────────
+    function renderQuickStats(kpis, currHist, prevHist) {
+      const container = document.getElementById('quickStatsContent');
+      const lines = [];
+
+      const findKpi = name => kpis.find(k => k.name === name);
+      const vb = findKpi('Ventas Brutas (IVA incl.)');
+      const vn = findKpi('Ingresos Netos (sin IVA)');
+      const util = findKpi('Utilidad Operacional');
+      const ads = findKpi('Gasto Ads (Meta)');
+      const mer = findKpi('MER (ROAS General)');
+
+      if (vb?.value) lines.push(`<span class="material-symbols-outlined text-[14px] align-middle text-ci-primary mr-1">shopping_bag</span> Facturacion bruta: <strong class="text-white">${fmtMoney(vb.value)}</strong>`);
+      if (ads?.value && vn?.value) {
+        const adsPct = ((ads.value / vn.value) * 100).toFixed(1);
+        lines.push(`<span class="material-symbols-outlined text-[14px] align-middle text-amber-500 mr-1">campaign</span> Ads representan el <strong class="text-white">${adsPct}%</strong> de ventas netas`);
+      }
+      if (mer?.value) lines.push(`<span class="material-symbols-outlined text-[14px] align-middle text-ci-primary mr-1">ads_click</span> Cada $1 en ads genera <strong class="text-white">${fmtNum(mer.value)}</strong> en ventas`);
+
+      container.innerHTML = lines.map(l => `<p>${l}</p>`).join('');
+    }
+
+    // ── Render: Trend Charts ──────────────────────────────
+    function renderTrendCharts(hist) {
+      if (!hist || hist.length === 0) return;
+      const labels = hist.map(h => shortMonth(h.periodo));
+
+      // Read colors from CSS variables at render time
+      const styles = getComputedStyle(document.documentElement);
+      const cPrimary = styles.getPropertyValue('--ci-primary').trim() || '#5abfb5';
+      const cPrimaryDark = styles.getPropertyValue('--ci-primary-dark').trim() || '#3a8f87';
+      const cSecondary = styles.getPropertyValue('--ci-secondary').trim() || '#cf7866';
+      const cText = styles.getPropertyValue('--ci-text').trim() || '#e6edf3';
+      const cWarn = '#d29922';
+
+      const gridColor = 'rgba(48, 54, 61, 0.5)';
+
+      // Chart 1: Revenue & Profit
+      if (charts.revenue) charts.revenue.destroy();
+      charts.revenue = new Chart(document.getElementById('chartRevenue'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Ventas Brutas', data: hist.map(h => h.ventasTotales), backgroundColor: cPrimary + '99', borderRadius: 4, order: 2 },
+            { label: 'Ingresos Netos', data: hist.map(h => h.ingresosNetos), backgroundColor: cPrimary + '4D', borderRadius: 4, order: 3 },
+            { label: 'Utilidad Op.', data: hist.map(h => h.utilidadOp), type: 'line', borderColor: cText, backgroundColor: cText + '1A', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: cText, fill: false, tension: 0.3, order: 1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtMoney(ctx.raw) } } },
+          scales: { y: { ticks: { callback: v => fmtMoney(v) }, grid: { color: gridColor } }, x: { grid: { display: false } } }
+        }
+      });
+
+      // Chart 2: Margins
+      if (charts.margins) charts.margins.destroy();
+      charts.margins = new Chart(document.getElementById('chartMargins'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Margen Bruto %', data: hist.map(h => h.margenBrutoPct), borderColor: cWarn, backgroundColor: cWarn + '1A', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: cWarn, tension: 0.3, fill: true },
+            { label: 'Utilidad Op. %', data: hist.map(h => h.utilidadOpPct), borderColor: cPrimaryDark, backgroundColor: cPrimaryDark + '1A', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: cPrimaryDark, tension: 0.3, fill: true }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtPct(ctx.raw) } } },
+          scales: { y: { ticks: { callback: v => (v*100).toFixed(0) + '%' }, grid: { color: gridColor } }, x: { grid: { display: false } } }
+        }
+      });
+
+      // Chart 3: Marketing
+      if (charts.marketing) charts.marketing.destroy();
+      charts.marketing = new Chart(document.getElementById('chartMarketing'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'CPA', data: hist.map(h => h.cpa), backgroundColor: cSecondary + '80', borderRadius: 4, yAxisID: 'y1', order: 2 },
+            { label: 'MER', data: hist.map(h => h.mer), type: 'line', borderColor: cPrimary, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: cPrimary, tension: 0.3, fill: false, yAxisID: 'y', order: 1 },
+            { label: 'ROAS Meta', data: hist.map(h => h.roasMeta), type: 'line', borderColor: cText, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: cText, borderDash: [5,3], tension: 0.3, fill: false, yAxisID: 'y', order: 1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label === 'CPA' ? 'CPA: ' + fmtMoney(ctx.raw) : ctx.dataset.label + ': ' + fmtNum(ctx.raw) } } },
+          scales: {
+            y: { position: 'left', title: { display: true, text: 'ROAS', color: '#8b949e' }, ticks: { callback: v => v.toFixed(1) }, grid: { color: gridColor } },
+            y1: { position: 'right', title: { display: true, text: 'CPA ($)', color: '#8b949e' }, ticks: { callback: v => fmtMoney(v) }, grid: { display: false } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+
+      // Chart 4: Costs
+      if (charts.costs) charts.costs.destroy();
+      charts.costs = new Chart(document.getElementById('chartCosts'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Costo Productos', data: hist.map(h => h.costoProductos), backgroundColor: cWarn + '80', borderRadius: 4, order: 2 },
+            { label: 'Gasto Ads', data: hist.map(h => h.gastoAds), backgroundColor: cSecondary + '80', borderRadius: 4, order: 3 },
+            { label: 'Total Gastos Op.', data: hist.map(h => h.totalGastosOp), type: 'line', borderColor: cText, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: cText, tension: 0.3, fill: false, order: 1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtMoney(ctx.raw) } } },
+          scales: { y: { ticks: { callback: v => fmtMoney(v) }, grid: { color: gridColor } }, x: { grid: { display: false } } }
+        }
+      });
+    }
+
+    // ── Render: Historical Table ──────────────────────────
+    function renderHistTable(hist) {
+      const tbody = document.getElementById('histTableBody');
+      tbody.innerHTML = '';
+      if (!hist || hist.length === 0) return;
+
+      hist.forEach(h => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-[var(--ci-border-light)] hover:bg-white/5 transition-colors';
+        const negClass = v => v < 0 ? 'text-ci-secondary font-semibold' : '';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 text-left font-semibold sticky left-0 bg-[var(--ci-bg-alt)] z-10">${fmtPeriodShort(h.periodo)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtMoney(h.ventasTotales)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtMoney(h.ingresosNetos)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtMoney(h.costoProductos)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtMoney(h.margenBruto)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtPct(h.margenBrutoPct)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtMoney(h.gastoAds)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtNum(h.mer)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtNum(h.roasMeta)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtMoney(h.cpa)}</td>
+          <td class="py-2.5 px-3 text-right">${fmtMoney(h.totalGastosOp)}</td>
+          <td class="py-2.5 px-3 text-right ${negClass(h.utilidadOp)}">${fmtMoney(h.utilidadOp)}</td>
+          <td class="py-2.5 px-3 text-right ${negClass(h.utilidadOpPct)}">${fmtPct(h.utilidadOpPct)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ── Init ──────────────────────────────────────────────
+    if (WEBAPP_URL) {
+      loadData();
+      setInterval(loadData, REFRESH_MS);
+    } else {
+      // No store/token params — show setup message
+      showSetupScreen();
+    }
+  </script>
+</body>
+</html>
