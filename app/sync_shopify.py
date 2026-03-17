@@ -109,54 +109,37 @@ def shopify_fetch_all(domain: str, token: str, endpoint: str, params: dict) -> l
     GET a Shopify Admin API con paginacion automatica via Link header.
     Retorna todos los objetos del recurso.
     """
+    import re
     all_items = []
     base_url = f"https://{domain}/admin/api/{SHOPIFY_API_VERSION}/{endpoint}"
-
-    print(f"    [fetch_all] URL: {base_url}")
-    print(f"    [fetch_all] params: {params}")
-    print(f"    [fetch_all] token: {token[:8]}...{token[-4:]}")
 
     with httpx.Client(timeout=60) as client:
         url = base_url
         first = True
-        page = 0
 
         while url:
-            page += 1
             if first:
                 resp = client.get(url, params=params, headers={"X-Shopify-Access-Token": token})
                 first = False
             else:
                 resp = client.get(url, headers={"X-Shopify-Access-Token": token})
 
-            print(f"    [fetch_all] page {page}: HTTP {resp.status_code}")
-
             if resp.status_code != 200:
-                print(f"    [fetch_all] ERROR body: {resp.text[:500]}")
                 raise RuntimeError(
                     f"Shopify API error {resp.status_code}: {resp.text[:500]}"
                 )
 
             data = resp.json()
-            keys = list(data.keys())
-            resource_key = keys[0] if keys else None
-            print(f"    [fetch_all] response keys: {keys}, resource_key: {resource_key}")
-
+            resource_key = list(data.keys())[0] if data else None
             if resource_key:
                 items = data.get(resource_key, [])
                 if isinstance(items, list):
-                    print(f"    [fetch_all] items count: {len(items)}")
                     all_items.extend(items)
-                else:
-                    print(f"    [fetch_all] WARNING: items is {type(items).__name__}, not list!")
-            else:
-                print(f"    [fetch_all] WARNING: no keys in response!")
 
             # Paginacion via Link header
             url = None
             link_header = resp.headers.get("link", "")
             if link_header:
-                import re
                 match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
                 if match:
                     url = match.group(1)
@@ -165,7 +148,6 @@ def shopify_fetch_all(domain: str, token: str, endpoint: str, params: dict) -> l
             if url:
                 time.sleep(0.5)
 
-    print(f"    [fetch_all] TOTAL: {len(all_items)} items in {page} pages")
     return all_items
 
 
@@ -277,26 +259,7 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
     since, until = period_to_date_range(periodo)
     store_tz = store.get("timezone", "America/Santiago")
 
-    print(f"  Sync Shopify [{store['id']}]: periodo={periodo}, domain={store['shopify_domain']}")
-    print(f"  Token: {token[:8]}...{token[-4:]}, date_range: {since} → {until}")
-
-    # DEBUG: prueba directa para comparar con shopify_fetch_all
-    try:
-        with httpx.Client(timeout=30) as _c:
-            _url = f"https://{store['shopify_domain']}/admin/api/{SHOPIFY_API_VERSION}/orders.json"
-            _r = _c.get(_url, params={
-                "status": "any",
-                "created_at_min": since,
-                "created_at_max": until,
-                "limit": 3,
-            }, headers={"X-Shopify-Access-Token": token})
-            _data = _r.json()
-            _orders = _data.get("orders", [])
-            print(f"  DEBUG DIRECT TEST: HTTP {_r.status_code}, keys={list(_data.keys())}, orders={len(_orders)}")
-            if _orders:
-                print(f"  DEBUG first order: id={_orders[0]['id']}, created={_orders[0].get('created_at')}")
-    except Exception as _e:
-        print(f"  DEBUG DIRECT TEST ERROR: {_e}")
+    print(f"  Sync Shopify [{store['id']}]: periodo={periodo}")
 
     # 1. Ordenes creadas en el periodo (comportamiento original)
     orders_created = shopify_fetch_all(store["shopify_domain"], token, "orders.json", {
@@ -324,11 +287,7 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
             seen_ids.add(oid)
             orders.append(o)
 
-    print(f"  Shopify: {len(orders)} pedidos obtenidos ({len(orders_created)} created, {len(orders_updated)} updated)")
-
-    # Log sample orders for debugging
-    for o in orders[:3]:
-        print(f"    Sample order: id={o['id']}, created_at={o.get('created_at','?')}, financial_status={o.get('financial_status','?')}")
+    print(f"  Shopify: {len(orders)} pedidos ({len(orders_created)} created, {len(orders_updated)} updated)")
 
     # Separar ordenes del periodo target vs ordenes de otros periodos (updated)
     order_rows = []       # ordenes del periodo target (reemplazo atomico)
@@ -337,23 +296,17 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
     updated_orders = []   # ordenes de otros periodos (upsert individual)
     updated_lines = []
     updated_refunds = []
-    periodos_found = {}   # debug: count orders per periodo
 
     for order in orders:
         od, lines, refunds = extract_order_data(order, store["id"], store_tz)
-        periodos_found[od["periodo"]] = periodos_found.get(od["periodo"], 0) + 1
         if od["periodo"] == periodo:
             order_rows.append(od)
             line_rows.extend(lines)
             refund_rows.extend(refunds)
         elif od["periodo"]:
-            # Orden de otro periodo actualizada (ej: refund tardio)
             updated_orders.append(od)
             updated_lines.extend(lines)
             updated_refunds.extend(refunds)
-
-    print(f"  Periodos encontrados: {periodos_found}")
-    print(f"  Target periodo '{periodo}': {len(order_rows)} orders match, {len(updated_orders)} other periodos")
 
     # Safety check: no borrar datos existentes si API retorna 0 ordenes
     existing_count = 0
@@ -365,23 +318,13 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
         existing_count = row[0] if row else 0
 
     if len(order_rows) == 0 and existing_count > 0:
-        print(f"  ⚠ SAFETY: API retorno 0 ordenes pero hay {existing_count} en DB para {periodo}. NO se borran datos.")
+        print(f"  ⚠ Safety: 0 ordenes del API pero {existing_count} en DB. Datos preservados.")
         return {
             "orders": 0,
             "lines": 0,
             "refunds": 0,
             "updated_from_other_periods": len(updated_orders),
-            "warning": f"Shopify API retorno 0 ordenes para {periodo} pero hay {existing_count} en DB. Datos preservados. Verifica credenciales con el diagnostico.",
-            "debug": {
-                "domain": store["shopify_domain"],
-                "periodo": periodo,
-                "date_range": f"{since} → {until}",
-                "fetched_created": len(orders_created),
-                "fetched_updated": len(orders_updated),
-                "token_type": "direct" if token.startswith("shpat_") else "oauth",
-                "existing_in_db": existing_count,
-                "safety_triggered": True,
-            },
+            "warning": f"Shopify API retorno 0 ordenes para {periodo} pero hay {existing_count} en DB. Datos preservados.",
         }
 
     # Escribir en DB
@@ -465,25 +408,12 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
             )
 
     total = len(order_rows) + len(updated_orders)
-    print(f"  DB: {len(order_rows)} orders periodo, {len(updated_orders)} orders updated, {len(line_rows)+len(updated_lines)} lines, {len(refund_rows)+len(updated_refunds)} refunds")
+    print(f"  Resultado: {total} orders, {len(line_rows)+len(updated_lines)} lines, {len(refund_rows)+len(updated_refunds)} refunds")
     return {
         "orders": total,
         "lines": len(line_rows) + len(updated_lines),
         "refunds": len(refund_rows) + len(updated_refunds),
         "updated_from_other_periods": len(updated_orders),
-        "debug": {
-            "domain": store["shopify_domain"],
-            "periodo": periodo,
-            "date_range": f"{since} → {until}",
-            "fetched_created": len(orders_created),
-            "fetched_updated": len(orders_updated),
-            "total_merged": len(orders),
-            "matched_periodo": len(order_rows),
-            "other_periodos": len(updated_orders),
-            "periodos_found": periodos_found,
-            "token_type": "direct" if token.startswith("shpat_") else "oauth",
-            "store_timezone": store_tz,
-        },
     }
 
 
