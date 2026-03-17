@@ -203,19 +203,19 @@ def extract_order_data(order: dict, store_id: str, store_timezone: str = "Americ
         "store_id": store_id,
         "created_at": created_at,
         "periodo": periodo,
-        "financial_status": order.get("financial_status", ""),
+        "financial_status": order.get("financial_status") or "",
         "fulfillment_status": order.get("fulfillment_status") or "",
-        "total_price": float(order.get("total_price", 0)),
-        "subtotal_price": float(order.get("subtotal_price", 0)),
-        "total_discounts": float(order.get("total_discounts", 0)),
-        "total_tax": float(order.get("total_tax", 0)),
+        "total_price": float(order.get("total_price") or 0),
+        "subtotal_price": float(order.get("subtotal_price") or 0),
+        "total_discounts": float(order.get("total_discounts") or 0),
+        "total_tax": float(order.get("total_tax") or 0),
         "total_shipping": shipping_total,
         "has_shipping": has_shipping,
-        "current_subtotal_price": float(order.get("current_subtotal_price", 0)),
-        "current_total_price": float(order.get("current_total_price", 0)),
-        "currency": order.get("currency", ""),
-        "source_name": order.get("source_name", ""),
-        "tags": order.get("tags", ""),
+        "current_subtotal_price": float(order.get("current_subtotal_price") or 0),
+        "current_total_price": float(order.get("current_total_price") or 0),
+        "currency": order.get("currency") or "",
+        "source_name": order.get("source_name") or "",
+        "tags": order.get("tags") or "",
     }
 
     # Line items con line_item_id de Shopify
@@ -225,18 +225,18 @@ def extract_order_data(order: dict, store_id: str, store_timezone: str = "Americ
             "order_id": str(order["id"]),
             "store_id": store_id,
             "periodo": periodo,
-            "financial_status": order.get("financial_status", ""),
-            "line_item_id": str(item.get("id", "")),
-            "item_name": item.get("name", ""),
-            "item_sku": item.get("sku", ""),
-            "quantity": int(item.get("quantity", 0)),
-            "price": float(item.get("price", 0)),
+            "financial_status": order.get("financial_status") or "",
+            "line_item_id": str(item.get("id") or ""),
+            "item_name": item.get("name") or "",
+            "item_sku": item.get("sku") or "",
+            "quantity": int(item.get("quantity") or 0),
+            "price": float(item.get("price") or 0),
         })
 
     # Refunds detallados
     refund_rows = []
     for refund in (order.get("refunds") or []):
-        refund_id = str(refund.get("id", ""))
+        refund_id = str(refund.get("id") or "")
         refund_dt = refund.get("created_at") or raw_dt
         if refund_dt:
             rdt = datetime.fromisoformat(refund_dt)
@@ -255,11 +255,11 @@ def extract_order_data(order: dict, store_id: str, store_timezone: str = "Americ
                 "store_id": store_id,
                 "created_at": refund_created,
                 "periodo": refund_periodo,
-                "line_item_id": str(rli.get("line_item_id", "")),
-                "item_sku": li.get("sku", ""),
-                "item_name": li.get("name", ""),
-                "quantity": int(rli.get("quantity", 0)),
-                "subtotal": float(rli.get("subtotal", 0)),
+                "line_item_id": str(rli.get("line_item_id") or ""),
+                "item_sku": li.get("sku") or "",
+                "item_name": li.get("name") or "",
+                "quantity": int(rli.get("quantity") or 0),
+                "subtotal": float(rli.get("subtotal") or 0),
             })
 
     return order_data, line_items, refund_rows
