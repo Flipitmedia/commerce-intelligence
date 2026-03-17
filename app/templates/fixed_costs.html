@@ -20,7 +20,7 @@
           <th class="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Descripcion</th>
           <th class="px-5 py-3 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Monto</th>
           <th class="px-5 py-3 text-center text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Recurrente</th>
-          <th class="px-5 py-3 w-16"></th>
+          <th class="px-5 py-3 w-24"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-50">
@@ -39,7 +39,11 @@
             <span class="material-symbols-outlined text-slate-200 text-[18px]">circle</span>
             {% endif %}
           </td>
-          <td class="px-5 py-3">
+          <td class="px-5 py-3 flex items-center gap-1">
+            <button onclick="openEditModal({{ item.id }}, '{{ item.periodo }}', '{{ item.category }}', '{{ item.description }}', {{ item.amount }}, {{ item.recurring }}, {{ item.tax_included }}, '{{ item.notes }}')"
+                    class="text-slate-300 hover:text-brand-500 transition-colors">
+              <span class="material-symbols-outlined text-[18px]">edit</span>
+            </button>
             <form method="POST" action="/admin/{{ store.id }}/fixed-costs/{{ item.id }}/delete?token={{ token }}"
                   class="inline" onsubmit="return confirm('Eliminar este gasto?')">
               <button class="text-slate-300 hover:text-red-500 transition-colors">
@@ -62,7 +66,7 @@
   </div>
 </div>
 
-<!-- Modal -->
+<!-- Modal Agregar -->
 <div id="addModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50" onclick="if(event.target===this)this.classList.add('hidden')">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
     <div class="px-6 py-4 border-b border-slate-100">
@@ -113,4 +117,70 @@
     </form>
   </div>
 </div>
+
+<!-- Modal Editar -->
+<div id="editModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100">
+      <h3 class="text-sm font-semibold text-slate-900">Editar Gasto Fijo</h3>
+    </div>
+    <form id="editForm" method="POST" class="px-6 py-5 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Periodo</label>
+          <input type="text" name="periodo" id="edit_periodo" class="block w-full rounded-lg border-slate-200 text-sm font-mono focus:border-brand-500 focus:ring-brand-500" required pattern="\d{4}-\d{2}">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Categoria</label>
+          <select name="category" id="edit_category" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
+            {% for cat in categories %}
+            <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Descripcion</label>
+        <input type="text" name="description" id="edit_description" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" required>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Monto</label>
+        <input type="number" step="1" name="amount" id="edit_amount" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" required>
+      </div>
+      <div class="space-y-2">
+        <div class="flex items-center gap-2">
+          <input type="hidden" name="tax_included" value="0">
+          <input type="checkbox" name="tax_included" id="edit_tax_included" value="1" class="rounded border-slate-300 text-brand-500 focus:ring-brand-500">
+          <label for="edit_tax_included" class="text-xs text-slate-600">IVA incluido en el monto</label>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" name="recurring" id="edit_recurring" value="1" class="rounded border-slate-300 text-brand-500 focus:ring-brand-500">
+          <label for="edit_recurring" class="text-xs text-slate-600">Recurrente (se aplica todos los meses)</label>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Notas</label>
+        <input type="text" name="notes" id="edit_notes" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="this.closest('#editModal').classList.add('hidden')" class="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors">Cancelar</button>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEditModal(id, periodo, category, description, amount, recurring, taxIncluded, notes) {
+  document.getElementById('editForm').action = '/admin/{{ store.id }}/fixed-costs/' + id + '/edit?token={{ token }}';
+  document.getElementById('edit_periodo').value = periodo;
+  document.getElementById('edit_category').value = category;
+  document.getElementById('edit_description').value = description;
+  document.getElementById('edit_amount').value = amount;
+  document.getElementById('edit_recurring').checked = recurring == 1;
+  document.getElementById('edit_tax_included').checked = taxIncluded == 1;
+  document.getElementById('edit_notes').value = notes;
+  document.getElementById('editModal').classList.remove('hidden');
+}
+</script>
 {% endblock %}

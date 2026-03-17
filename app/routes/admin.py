@@ -144,6 +144,24 @@ def admin_fixed_costs_add(
     return RedirectResponse(f"/admin/{store_id}/fixed-costs?token={token}", status_code=303)
 
 
+@router.post("/{store_id}/fixed-costs/{item_id}/edit")
+def admin_fixed_costs_edit(
+    store_id: str, item_id: int, token: str = "",
+    periodo: str = Form(""), category: str = Form(""),
+    description: str = Form(""), amount: float = Form(0),
+    recurring: str = Form("0"), tax_included: str = Form("1"),
+    notes: str = Form(""),
+):
+    get_store(store_id, token)
+    rec = 1 if recurring == "1" else 0
+    tax_inc = 1 if tax_included == "1" else 0
+    execute(
+        "UPDATE fixed_costs SET periodo=?, category=?, description=?, amount=?, recurring=?, tax_included=?, notes=? WHERE id=? AND store_id=?",
+        (periodo, category, description, amount, rec, tax_inc, notes, item_id, store_id),
+    )
+    return RedirectResponse(f"/admin/{store_id}/fixed-costs?token={token}", status_code=303)
+
+
 @router.post("/{store_id}/fixed-costs/{item_id}/delete")
 def admin_fixed_costs_delete(store_id: str, item_id: int, token: str = ""):
     get_store(store_id, token)
@@ -179,6 +197,23 @@ def admin_variable_costs_add(
     execute(
         "INSERT INTO variable_costs (store_id, date, periodo, category, description, amount, tax_included, notes) VALUES (?,?,?,?,?,?,?,?)",
         (store_id, date, periodo, category, description, amount, tax_inc, notes),
+    )
+    return RedirectResponse(f"/admin/{store_id}/variable-costs?token={token}", status_code=303)
+
+
+@router.post("/{store_id}/variable-costs/{item_id}/edit")
+def admin_variable_costs_edit(
+    store_id: str, item_id: int, token: str = "",
+    date: str = Form(""), periodo: str = Form(""),
+    category: str = Form(""), description: str = Form(""),
+    amount: float = Form(0), tax_included: str = Form("1"),
+    notes: str = Form(""),
+):
+    get_store(store_id, token)
+    tax_inc = 1 if tax_included == "1" else 0
+    execute(
+        "UPDATE variable_costs SET date=?, periodo=?, category=?, description=?, amount=?, tax_included=?, notes=? WHERE id=? AND store_id=?",
+        (date, periodo, category, description, amount, tax_inc, notes, item_id, store_id),
     )
     return RedirectResponse(f"/admin/{store_id}/variable-costs?token={token}", status_code=303)
 
