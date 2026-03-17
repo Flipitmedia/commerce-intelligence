@@ -179,7 +179,7 @@ def debug_data(store_id: str, token: str = ""):
         (store_id,),
     )
     sample_order = query(
-        "SELECT id, financial_status, total_price, subtotal_price, total_discounts, total_shipping FROM orders WHERE store_id = ? LIMIT 3",
+        "SELECT id, financial_status, total_price, current_total_price, subtotal_price, current_subtotal_price, total_discounts, total_shipping, has_shipping, fulfillment_status FROM orders WHERE store_id = ? LIMIT 3",
         (store_id,),
     )
     return {

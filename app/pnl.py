@@ -190,6 +190,13 @@ def compute_pnl(store: dict, periodo: str | None = None) -> dict:
     total_cobrado = paid["total_cobrado"]       # SUM(total_price)
     total_retenido = paid["total_retenido"]     # SUM(current_total_price)
     subtotal_retenido = paid["subtotal_retenido"]  # SUM(current_subtotal_price)
+
+    # Fallback: si current_total_price no fue sincronizado (data pre-v2),
+    # los campos current_* quedan en 0 por DEFAULT. Detectar y usar total_price.
+    if total_retenido == 0 and total_cobrado > 0:
+        total_retenido = total_cobrado
+        subtotal_retenido = paid["ventas_brutas"] - paid["descuentos"]  # subtotal_price
+
     devoluciones = total_cobrado - total_retenido   # refund completo (productos+shipping+tax)
 
     # Conteos de envio/fulfillment
