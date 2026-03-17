@@ -6,7 +6,7 @@ Portado desde SyncMeta.gs
 import time
 import httpx
 from app.database import get_db
-from app.sync_shopify import period_to_date_range, generate_period_range
+from app.sync_shopify import generate_period_range
 
 META_API_VERSION = "v21.0"
 
@@ -157,9 +157,14 @@ def sync_meta_periodo(store: dict, periodo: str | None = None) -> dict:
     if not ad_account_id.startswith("act_"):
         ad_account_id = f"act_{ad_account_id}"
 
-    since, until = period_to_date_range(periodo)
-    since_date = since[:10]
-    until_date = until[:10]
+    # Meta usa fechas de reporte fijas (no timestamps con timezone),
+    # NO extender ±1 dia como Shopify. Usar rango exacto del mes.
+    import calendar as _cal
+    parts = periodo.split("-")
+    year, month = int(parts[0]), int(parts[1])
+    last_day = _cal.monthrange(year, month)[1]
+    since_date = f"{year}-{month:02d}-01"
+    until_date = f"{year}-{month:02d}-{last_day:02d}"
 
     print(f"  Sync Meta [{store['id']}]: periodo={periodo}")
 
@@ -189,7 +194,7 @@ def sync_meta_periodo(store: dict, periodo: str | None = None) -> dict:
             cols = ", ".join(row.keys())
             placeholders = ", ".join(["?"] * len(row))
             conn.execute(
-                f"INSERT INTO meta_insights ({cols}) VALUES ({placeholders})",
+                f"INSERT OR REPLACE INTO meta_insights ({cols}) VALUES ({placeholders})",
                 tuple(row.values()),
             )
 
