@@ -1692,15 +1692,33 @@
     // v2.0.0: pnlFromHistorico con nueva nomenclatura
     function pnlFromHistorico(h) {
       const vn = h.ingresosNetos || 1;
-      return [
-        { concept: '(+) Ventas Brutas (IVA incl.)', amount: h.ventasTotales, pctOfSales: h.ventasTotales / vn },
-        { concept: '(-) Costo de Productos', amount: h.costoProductos, pctOfSales: h.costoProductos / vn },
-        { concept: '(=) Margen Bruto', amount: h.margenBruto, pctOfSales: h.margenBrutoPct },
-        { concept: '(-) Gasto Ads (Meta)', amount: h.gastoAds, pctOfSales: h.gastoAds / vn },
-        { concept: '(-) Otros Gastos', amount: (h.totalGastosOp||0) - (h.gastoAds||0), pctOfSales: ((h.totalGastosOp||0) - (h.gastoAds||0)) / vn },
-        { concept: '(=) Total Gastos Op.', amount: h.totalGastosOp, pctOfSales: h.totalGastosOp / vn },
-        { concept: '(=) UTILIDAD OPERACIONAL', amount: h.utilidadOp, pctOfSales: h.utilidadOpPct },
+      const pct = v => v != null ? v / vn : null;
+      const rows = [
+        { concept: '(+) Ventas Brutas (IVA incl.)', amount: h.ventasTotales, pctOfSales: pct(h.ventasTotales) },
+        { concept: '(-) Descuentos', amount: h.descuentos != null ? -Math.abs(h.descuentos) : 0, pctOfSales: pct(h.descuentos != null ? -Math.abs(h.descuentos) : 0) },
+        { concept: '(+) Recaudado en Envios', amount: h.ingresoEnvios || 0, pctOfSales: pct(h.ingresoEnvios || 0) },
+        { concept: '(-) Devoluciones', amount: h.devoluciones != null ? -Math.abs(h.devoluciones) : 0, pctOfSales: pct(h.devoluciones != null ? -Math.abs(h.devoluciones) : 0) },
       ];
+      if (h.ajusteReconciliacion) {
+        rows.push({ concept: '(\u00b1) Ajuste de Reconciliacion', amount: h.ajusteReconciliacion, pctOfSales: pct(h.ajusteReconciliacion) });
+      }
+      rows.push(
+        { concept: '(=) Facturacion (con IVA)', amount: h.facturacion || 0, pctOfSales: pct(h.facturacion || 0) },
+        { concept: '(-) IVA Debito Fiscal', amount: h.iva != null ? -Math.abs(h.iva) : 0, pctOfSales: pct(h.iva != null ? -Math.abs(h.iva) : 0) },
+        { concept: '(=) Ingresos Netos (sin IVA)', amount: h.ingresosNetos, pctOfSales: 1.0 },
+        { concept: '(-) Costo de Productos', amount: h.costoProductos != null ? -Math.abs(h.costoProductos) : 0, pctOfSales: pct(h.costoProductos != null ? -Math.abs(h.costoProductos) : 0) },
+        { concept: '(-) Picking y Packing', amount: h.picking != null ? -Math.abs(h.picking) : 0, pctOfSales: pct(h.picking != null ? -Math.abs(h.picking) : 0) },
+        { concept: '(-) Costo Total Envios', amount: h.costoEnvios != null ? -Math.abs(h.costoEnvios) : 0, pctOfSales: pct(h.costoEnvios != null ? -Math.abs(h.costoEnvios) : 0) },
+        { concept: '(=) Margen Bruto', amount: h.margenBruto, pctOfSales: h.margenBrutoPct },
+        { concept: '(-) Gasto Ads (Meta)', amount: h.gastoAds != null ? -Math.abs(h.gastoAds) : 0, pctOfSales: pct(h.gastoAds != null ? -Math.abs(h.gastoAds) : 0) },
+        { concept: '(-) Comision Pasarela', amount: h.comisionPasarela != null ? -Math.abs(h.comisionPasarela) : 0, pctOfSales: pct(h.comisionPasarela != null ? -Math.abs(h.comisionPasarela) : 0) },
+        { concept: '(-) Comision Shopify', amount: h.comisionShopify != null ? -Math.abs(h.comisionShopify) : 0, pctOfSales: pct(h.comisionShopify != null ? -Math.abs(h.comisionShopify) : 0) },
+        { concept: '(-) Gastos Fijos', amount: h.gastosFijos != null ? -Math.abs(h.gastosFijos) : 0, pctOfSales: pct(h.gastosFijos != null ? -Math.abs(h.gastosFijos) : 0) },
+        { concept: '(-) Gastos Variables', amount: h.gastosVariables != null ? -Math.abs(h.gastosVariables) : 0, pctOfSales: pct(h.gastosVariables != null ? -Math.abs(h.gastosVariables) : 0) },
+        { concept: '(=) Total Gastos Op.', amount: h.totalGastosOp != null ? -Math.abs(h.totalGastosOp) : 0, pctOfSales: pct(h.totalGastosOp != null ? -Math.abs(h.totalGastosOp) : 0) },
+        { concept: '(=) UTILIDAD OPERACIONAL', amount: h.utilidadOp, pctOfSales: h.utilidadOpPct },
+      );
+      return rows;
     }
 
     // ── Render: Hero ──────────────────────────────────────
@@ -1918,13 +1936,7 @@
         container.appendChild(div);
       });
 
-      // Show note for simplified historico P&L
-      if (!isActive) {
-        const note = document.createElement('p');
-        note.className = 'text-xs text-[var(--ci-text-muted)] mt-4 italic text-center';
-        note.textContent = 'Vista simplificada para meses anteriores. El P\u0026L completo solo esta disponible para el periodo activo.';
-        container.appendChild(note);
-      }
+      // (P&L completo disponible para todos los periodos desde v2.4)
     }
 
     // ── Render: P&L Detail Table ──────────────────────────
