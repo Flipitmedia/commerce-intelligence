@@ -287,6 +287,10 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
 
     print(f"  Shopify: {len(orders)} pedidos obtenidos ({len(orders_created)} created, {len(orders_updated)} updated)")
 
+    # Log sample orders for debugging
+    for o in orders[:3]:
+        print(f"    Sample order: id={o['id']}, created_at={o.get('created_at','?')}, financial_status={o.get('financial_status','?')}")
+
     # Separar ordenes del periodo target vs ordenes de otros periodos (updated)
     order_rows = []       # ordenes del periodo target (reemplazo atomico)
     line_rows = []
@@ -294,9 +298,11 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
     updated_orders = []   # ordenes de otros periodos (upsert individual)
     updated_lines = []
     updated_refunds = []
+    periodos_found = {}   # debug: count orders per periodo
 
     for order in orders:
         od, lines, refunds = extract_order_data(order, store["id"], store_tz)
+        periodos_found[od["periodo"]] = periodos_found.get(od["periodo"], 0) + 1
         if od["periodo"] == periodo:
             order_rows.append(od)
             line_rows.extend(lines)
@@ -306,6 +312,9 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
             updated_orders.append(od)
             updated_lines.extend(lines)
             updated_refunds.extend(refunds)
+
+    print(f"  Periodos encontrados: {periodos_found}")
+    print(f"  Target periodo '{periodo}': {len(order_rows)} orders match, {len(updated_orders)} other periodos")
 
     # Safety check: no borrar datos existentes si API retorna 0 ordenes
     existing_count = 0
@@ -429,7 +438,12 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
             "date_range": f"{since} → {until}",
             "fetched_created": len(orders_created),
             "fetched_updated": len(orders_updated),
+            "total_merged": len(orders),
+            "matched_periodo": len(order_rows),
+            "other_periodos": len(updated_orders),
+            "periodos_found": periodos_found,
             "token_type": "direct" if token.startswith("shpat_") else "oauth",
+            "store_timezone": store_tz,
         },
     }
 
