@@ -389,7 +389,20 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
 
     total = len(order_rows) + len(updated_orders)
     print(f"  DB: {len(order_rows)} orders periodo, {len(updated_orders)} orders updated, {len(line_rows)+len(updated_lines)} lines, {len(refund_rows)+len(updated_refunds)} refunds")
-    return {"orders": total, "lines": len(line_rows) + len(updated_lines), "refunds": len(refund_rows) + len(updated_refunds), "updated_from_other_periods": len(updated_orders)}
+    return {
+        "orders": total,
+        "lines": len(line_rows) + len(updated_lines),
+        "refunds": len(refund_rows) + len(updated_refunds),
+        "updated_from_other_periods": len(updated_orders),
+        "debug": {
+            "domain": store["shopify_domain"],
+            "periodo": periodo,
+            "date_range": f"{since} → {until}",
+            "fetched_created": len(orders_created),
+            "fetched_updated": len(orders_updated),
+            "token_type": "direct" if token.startswith("shpat_") else "oauth",
+        },
+    }
 
 
 def sync_shopify_full(store: dict) -> dict:
