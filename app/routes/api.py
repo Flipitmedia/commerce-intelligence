@@ -47,15 +47,18 @@ def build_kpis(pnl: dict, store: dict) -> list[dict]:
             else:
                 return "CRITICO"
 
+    # Order MUST match dashboard HERO_KPI_INDICES [1,7,2] and SECONDARY [0,3,4,5,6,8,9]
+    # idx 0: Ventas Brutas, 1: Ingresos Netos, 2: Margen %, 3: Gasto Ads,
+    # 4: MER, 5: ROAS Meta, 6: CPA, 7: Utilidad Op, 8: Utilidad Op %, 9: Break-even
     return [
         {
-            "name": "Facturacion",
-            "value": pnl["facturacion"],
+            "name": "Ventas Brutas (IVA incl.)",
+            "value": pnl["ventas_brutas"],
             "target": None,
             "status": "OK",
         },
         {
-            "name": "Ingresos Netos",
+            "name": "Ingresos Netos (sin IVA)",
             "value": pnl["ingresos_netos"],
             "target": None,
             "status": "OK",
@@ -65,12 +68,6 @@ def build_kpis(pnl: dict, store: dict) -> list[dict]:
             "value": pnl["margen_bruto_pct"],
             "target": store["target_margen"],
             "status": status(pnl["margen_bruto_pct"], store["target_margen"]),
-        },
-        {
-            "name": "Utilidad Op. %",
-            "value": pnl["utilidad_op_pct"],
-            "target": store["target_utilidad"],
-            "status": status(pnl["utilidad_op_pct"], store["target_utilidad"]),
         },
         {
             "name": "Gasto Ads (Meta)",
@@ -97,16 +94,22 @@ def build_kpis(pnl: dict, store: dict) -> list[dict]:
             "status": "OK",
         },
         {
-            "name": "Break-even ROAS",
-            "value": pnl["breakeven_roas"],
-            "target": None,
-            "status": "OK",
-        },
-        {
             "name": "Utilidad Operacional",
             "value": pnl["utilidad_op"],
             "target": None,
             "status": "OK" if pnl["utilidad_op"] > 0 else "CRITICO",
+        },
+        {
+            "name": "Utilidad Operacional %",
+            "value": pnl["utilidad_op_pct"],
+            "target": store["target_utilidad"],
+            "status": status(pnl["utilidad_op_pct"], store["target_utilidad"]),
+        },
+        {
+            "name": "Break-even ROAS",
+            "value": pnl["breakeven_roas"],
+            "target": None,
+            "status": "OK",
         },
     ]
 
@@ -121,25 +124,25 @@ def build_pnl_cascade(pnl: dict) -> list[dict]:
     def pct(val):
         return round(val / ingresos, 4) if ingresos != 0 else 0
 
+    # Concept names MUST match dashboard PNL_STEPS keys exactly
     return [
-        {"concept": "Ventas Brutas (IVA incl.)", "amount": pnl["ventas_brutas"], "pctOfSales": pct(pnl["ventas_brutas"])},
+        {"concept": "(+) Ventas Brutas (IVA incl.)", "amount": pnl["ventas_brutas"], "pctOfSales": pct(pnl["ventas_brutas"])},
         {"concept": "(-) Descuentos", "amount": -pnl["descuentos"], "pctOfSales": pct(-pnl["descuentos"])},
         {"concept": "(+) Recaudado en Envios", "amount": pnl["ingreso_envios"], "pctOfSales": pct(pnl["ingreso_envios"])},
-        {"concept": "= Facturacion (con IVA)", "amount": pnl["facturacion"], "pctOfSales": pct(pnl["facturacion"])},
+        {"concept": "(=) Facturacion (con IVA)", "amount": pnl["facturacion"], "pctOfSales": pct(pnl["facturacion"])},
         {"concept": "(-) IVA Debito Fiscal", "amount": -pnl["iva_debito"], "pctOfSales": pct(-pnl["iva_debito"])},
-        {"concept": "= Ingresos Netos (sin IVA)", "amount": pnl["ingresos_netos"], "pctOfSales": 1.0},
+        {"concept": "(=) Ingresos Netos (sin IVA)", "amount": pnl["ingresos_netos"], "pctOfSales": 1.0},
         {"concept": "(-) Costo de Productos", "amount": -pnl["costo_productos"], "pctOfSales": pct(-pnl["costo_productos"])},
         {"concept": "(-) Picking y Packing", "amount": -pnl["picking_packing"], "pctOfSales": pct(-pnl["picking_packing"])},
-        {"concept": "(-) Costo Envios", "amount": -pnl["costo_envios"], "pctOfSales": pct(-pnl["costo_envios"])},
-        {"concept": "= Margen Bruto", "amount": pnl["margen_bruto"], "pctOfSales": pnl["margen_bruto_pct"]},
+        {"concept": "(-) Costo Total Envios", "amount": -pnl["costo_envios"], "pctOfSales": pct(-pnl["costo_envios"])},
+        {"concept": "(=) Margen Bruto", "amount": pnl["margen_bruto"], "pctOfSales": pnl["margen_bruto_pct"]},
         {"concept": "(-) Gasto Ads (Meta)", "amount": -pnl["gasto_ads"], "pctOfSales": pct(-pnl["gasto_ads"])},
         {"concept": "(-) Comision Pasarela", "amount": -pnl["comision_pasarela"], "pctOfSales": pct(-pnl["comision_pasarela"])},
         {"concept": "(-) Comision Shopify", "amount": -pnl["comision_shopify"], "pctOfSales": pct(-pnl["comision_shopify"])},
         {"concept": "(-) Gastos Fijos", "amount": -pnl["gastos_fijos"], "pctOfSales": pct(-pnl["gastos_fijos"])},
         {"concept": "(-) Gastos Variables", "amount": -pnl["gastos_variables"], "pctOfSales": pct(-pnl["gastos_variables"])},
-        {"concept": "= Total Gastos Op.", "amount": -pnl["total_gastos_op"], "pctOfSales": pct(-pnl["total_gastos_op"])},
-        {"concept": "= Utilidad Operacional", "amount": pnl["utilidad_op"], "pctOfSales": pnl["utilidad_op_pct"]},
-        {"concept": "Utilidad Op. %", "amount": pnl["utilidad_op_pct"], "pctOfSales": pnl["utilidad_op_pct"]},
+        {"concept": "(=) Total Gastos Op.", "amount": -pnl["total_gastos_op"], "pctOfSales": pct(-pnl["total_gastos_op"])},
+        {"concept": "(=) UTILIDAD OPERACIONAL", "amount": pnl["utilidad_op"], "pctOfSales": pnl["utilidad_op_pct"]},
     ]
 
 
