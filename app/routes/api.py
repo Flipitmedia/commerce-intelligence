@@ -339,6 +339,51 @@ def get_stats(store_id: str, token: str = ""):
     }
 
 
+@router.get("/{store_id}/debug/db")
+def debug_db(store_id: str, token: str = ""):
+    """Debug: muestra ordenes en DB por periodo con montos."""
+    from app.database import query
+    store = get_store_or_404(store_id, token)
+
+    by_period = query("""
+        SELECT periodo,
+               COUNT(*) as orders,
+               SUM(total_price) as total_cobrado,
+               SUM(current_total_price) as total_retenido,
+               GROUP_CONCAT(DISTINCT financial_status) as statuses
+        FROM orders
+        WHERE store_id = ?
+        GROUP BY periodo
+        ORDER BY periodo
+    """, (store_id,))
+
+    sample_orders = query("""
+        SELECT id, periodo, created_at, financial_status,
+               total_price, current_total_price, source_name
+        FROM orders
+        WHERE store_id = ? AND periodo = ?
+        ORDER BY created_at DESC
+        LIMIT 5
+    """, (store_id, store["periodo_activo"]))
+
+    meta_by_period = query("""
+        SELECT periodo, COUNT(*) as rows, SUM(spend) as total_spend
+        FROM meta_insights
+        WHERE store_id = ?
+        GROUP BY periodo
+        ORDER BY periodo
+    """, (store_id,))
+
+    return {
+        "store_id": store_id,
+        "periodo_activo": store["periodo_activo"],
+        "timezone": store.get("timezone", "?"),
+        "orders_by_period": [dict(r) for r in by_period] if by_period else [],
+        "sample_orders_current": [dict(r) for r in sample_orders] if sample_orders else [],
+        "meta_by_period": [dict(r) for r in meta_by_period] if meta_by_period else [],
+    }
+
+
 @router.post("/{store_id}/sync")
 def sync_periodo(store_id: str, token: str = ""):
     """Sync periodo activo (Shopify + Meta)."""
