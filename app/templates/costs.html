@@ -1,72 +1,83 @@
 {% extends "base.html" %}
 {% block title %}Costos Productos — {{ store.name }}{% endblock %}
+{% block page_title %}Costos de Productos{% endblock %}
+{% block page_subtitle %}Costo unitario por SKU para calculo de margen{% endblock %}
+{% block page_actions %}
+<button onclick="document.getElementById('addModal').classList.remove('hidden')"
+        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 transition-colors">
+  <span class="material-symbols-outlined text-[16px]">add</span> Agregar
+</button>
+{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold text-gray-900">Costos de Productos</h1>
-  <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn btn-primary">
-    <span class="material-symbols-outlined text-base">add</span> Agregar
-  </button>
+<div class="max-w-4xl">
+  <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-slate-100 bg-slate-50/50">
+          <th class="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">SKU</th>
+          <th class="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Producto</th>
+          <th class="px-5 py-3 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Costo Unit.</th>
+          <th class="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Notas</th>
+          <th class="px-5 py-3 w-16"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for item in items %}
+        <tr class="hover:bg-slate-50/50 transition-colors">
+          <td class="px-5 py-3 text-sm font-mono text-slate-500">{{ item.sku }}</td>
+          <td class="px-5 py-3 text-sm text-slate-900">{{ item.product }}</td>
+          <td class="px-5 py-3 text-sm text-right font-mono text-slate-900">{{ "{:,.0f}".format(item.unit_cost) }}</td>
+          <td class="px-5 py-3 text-xs text-slate-400">{{ item.notes }}</td>
+          <td class="px-5 py-3">
+            <form method="POST" action="/admin/{{ store.id }}/costs/{{ item.id }}/delete?token={{ token }}"
+                  class="inline" onsubmit="return confirm('Eliminar este costo?')">
+              <button class="text-slate-300 hover:text-red-500 transition-colors">
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="px-5 py-12 text-center">
+            <span class="material-symbols-outlined text-3xl text-slate-200 mb-2">inventory_2</span>
+            <p class="text-sm text-slate-400">Sin costos registrados</p>
+            <p class="text-xs text-slate-300 mt-1">Agrega costos unitarios por producto para calcular margen</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
-<div class="card overflow-hidden p-0">
-  <table class="w-full">
-    <thead class="bg-gray-50 border-b border-gray-200">
-      <tr>
-        <th class="table-header">SKU</th>
-        <th class="table-header">Producto</th>
-        <th class="table-header text-right">Costo Unitario</th>
-        <th class="table-header">Notas</th>
-        <th class="table-header w-24">Acciones</th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-gray-100">
-      {% for item in items %}
-      <tr class="hover:bg-gray-50">
-        <td class="table-cell font-mono text-xs">{{ item.sku }}</td>
-        <td class="table-cell">{{ item.product }}</td>
-        <td class="table-cell text-right font-mono">{{ "{:,.0f}".format(item.unit_cost) }}</td>
-        <td class="table-cell text-gray-500 text-xs">{{ item.notes }}</td>
-        <td class="table-cell">
-          <form method="POST" action="/admin/{{ store.id }}/costs/{{ item.id }}/delete?token={{ token }}"
-                class="inline" onsubmit="return confirm('Eliminar?')">
-            <button class="text-red-500 hover:text-red-700">
-              <span class="material-symbols-outlined text-base">delete</span>
-            </button>
-          </form>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="5" class="table-cell text-center text-gray-400 py-8">Sin costos registrados</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<!-- Add Modal -->
-<div id="addModal" class="hidden fixed inset-0 bg-black/30 flex items-center justify-center z-50" onclick="if(event.target===this)this.classList.add('hidden')">
-  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-    <h3 class="text-lg font-semibold mb-4">Agregar Costo de Producto</h3>
-    <form method="POST" action="/admin/{{ store.id }}/costs?token={{ token }}" class="space-y-4">
+<!-- Modal -->
+<div id="addModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100">
+      <h3 class="text-sm font-semibold text-slate-900">Agregar Costo de Producto</h3>
+    </div>
+    <form method="POST" action="/admin/{{ store.id }}/costs?token={{ token }}" class="px-6 py-5 space-y-4">
       <div>
-        <label class="label">SKU</label>
-        <input type="text" name="sku" class="input" placeholder="SKU-001">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">SKU</label>
+        <input type="text" name="sku" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" placeholder="SKU-001">
       </div>
       <div>
-        <label class="label">Producto</label>
-        <input type="text" name="product" class="input" required>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Producto</label>
+        <input type="text" name="product" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" required>
       </div>
       <div>
-        <label class="label">Costo Unitario</label>
-        <input type="number" step="0.01" name="unit_cost" class="input" required>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Costo Unitario</label>
+        <input type="number" step="0.01" name="unit_cost" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" required>
       </div>
       <div>
-        <label class="label">Notas</label>
-        <input type="text" name="notes" class="input">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Notas</label>
+        <input type="text" name="notes" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
       </div>
       <div class="flex justify-end gap-2 pt-2">
-        <button type="button" onclick="this.closest('#addModal').classList.add('hidden')" class="btn btn-secondary">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" onclick="this.closest('#addModal').classList.add('hidden')" class="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors">Cancelar</button>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors">Guardar</button>
       </div>
     </form>
   </div>

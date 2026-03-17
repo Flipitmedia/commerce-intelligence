@@ -3,103 +3,149 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Commerce Intelligence{% endblock %} — Admin</title>
+  <title>{% block title %}Commerce Intelligence{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: { 50: '#f0fdf9', 100: '#ccfbef', 200: '#99f6de', 300: '#5ceaca', 400: '#2dd4ab', 500: '#14b892', 600: '#0d9477', 700: '#0f7661', 800: '#115e4f', 900: '#134e42' },
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .nav-link { @apply px-3 py-2 rounded-lg text-sm font-medium transition-colors; }
-    .nav-link:hover { @apply bg-gray-100; }
-    .nav-link.active { @apply bg-blue-50 text-blue-700; }
-    .btn { @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer; }
-    .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
-    .btn-secondary { @apply bg-gray-100 text-gray-700 hover:bg-gray-200; }
-    .btn-danger { @apply bg-red-50 text-red-600 hover:bg-red-100; }
-    .btn-success { @apply bg-emerald-600 text-white hover:bg-emerald-700; }
-    .input { @apply block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500; }
-    .label { @apply block text-sm font-medium text-gray-700 mb-1; }
-    .card { @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6; }
-    .table-header { @apply px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider; }
-    .table-cell { @apply px-4 py-3 text-sm text-gray-900; }
-    .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
-    .badge-ok { @apply bg-emerald-50 text-emerald-700; }
-    .badge-warn { @apply bg-amber-50 text-amber-700; }
-    .badge-error { @apply bg-red-50 text-red-700; }
-    .htmx-indicator { display: none; }
-    .htmx-request .htmx-indicator { display: inline-block; }
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    /* Scrollbar minimal */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-  <!-- Top nav -->
-  <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-14">
-        <div class="flex items-center gap-6">
-          <a href="/admin/{{ store.id }}?token={{ token }}" class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-blue-600">analytics</span>
-            <span class="font-bold text-gray-900">{{ store.name }}</span>
-          </a>
-          <div class="flex items-center gap-1">
-            <a href="/admin/{{ store.id }}?token={{ token }}"
-               class="nav-link {% if active_page == 'config' %}active{% endif %}">
-              <span class="material-symbols-outlined text-base align-middle mr-1">settings</span>Config
-            </a>
-            <a href="/admin/{{ store.id }}/costs?token={{ token }}"
-               class="nav-link {% if active_page == 'costs' %}active{% endif %}">
-              <span class="material-symbols-outlined text-base align-middle mr-1">inventory</span>Costos
-            </a>
-            <a href="/admin/{{ store.id }}/fixed-costs?token={{ token }}"
-               class="nav-link {% if active_page == 'fixed_costs' %}active{% endif %}">
-              <span class="material-symbols-outlined text-base align-middle mr-1">payments</span>Fijos
-            </a>
-            <a href="/admin/{{ store.id }}/variable-costs?token={{ token }}"
-               class="nav-link {% if active_page == 'variable_costs' %}active{% endif %}">
-              <span class="material-symbols-outlined text-base align-middle mr-1">receipt_long</span>Variables
-            </a>
-            <a href="/admin/{{ store.id }}/invoices?token={{ token }}"
-               class="nav-link {% if active_page == 'invoices' %}active{% endif %}">
-              <span class="material-symbols-outlined text-base align-middle mr-1">description</span>Facturas
-            </a>
-            <a href="/admin/{{ store.id }}/sync?token={{ token }}"
-               class="nav-link {% if active_page == 'sync' %}active{% endif %}">
-              <span class="material-symbols-outlined text-base align-middle mr-1">sync</span>Sync
-            </a>
-          </div>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="fixed left-0 top-0 bottom-0 w-56 bg-white border-r border-slate-200 z-40 flex flex-col">
+    <!-- Logo -->
+    <div class="px-5 py-5 border-b border-slate-100">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
+          <span class="material-symbols-outlined text-white text-lg" style="font-variation-settings: 'FILL' 1">analytics</span>
         </div>
-        <a href="/dashboard/?store={{ store.id }}&token={{ token }}" target="_blank"
-           class="btn btn-primary text-xs">
-          <span class="material-symbols-outlined text-base">dashboard</span> Dashboard
-        </a>
+        <div>
+          <p class="text-sm font-semibold text-slate-900 leading-tight">{{ store.name }}</p>
+          <p class="text-[10px] text-slate-400 uppercase tracking-wider">Commerce Intel</p>
+        </div>
       </div>
     </div>
-  </nav>
 
-  <!-- Content -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    {% block content %}{% endblock %}
+    <!-- Navigation -->
+    <nav class="flex-1 px-3 py-4 space-y-0.5">
+      <p class="px-3 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Configuracion</p>
+
+      <a href="/admin/{{ store.id }}?token={{ token }}"
+         class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all
+                {% if active_page == 'config' %}bg-brand-50 text-brand-700 font-medium{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+        <span class="material-symbols-outlined text-[18px]" {% if active_page == 'config' %}style="font-variation-settings: 'FILL' 1"{% endif %}>tune</span>
+        General
+      </a>
+
+      <a href="/admin/{{ store.id }}/sync?token={{ token }}"
+         class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all
+                {% if active_page == 'sync' %}bg-brand-50 text-brand-700 font-medium{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+        <span class="material-symbols-outlined text-[18px]" {% if active_page == 'sync' %}style="font-variation-settings: 'FILL' 1"{% endif %}>sync</span>
+        Sincronizar
+      </a>
+
+      <div class="pt-3 pb-2">
+        <p class="px-3 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Datos</p>
+      </div>
+
+      <a href="/admin/{{ store.id }}/costs?token={{ token }}"
+         class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all
+                {% if active_page == 'costs' %}bg-brand-50 text-brand-700 font-medium{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+        <span class="material-symbols-outlined text-[18px]" {% if active_page == 'costs' %}style="font-variation-settings: 'FILL' 1"{% endif %}>inventory_2</span>
+        Costos Productos
+      </a>
+
+      <a href="/admin/{{ store.id }}/fixed-costs?token={{ token }}"
+         class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all
+                {% if active_page == 'fixed_costs' %}bg-brand-50 text-brand-700 font-medium{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+        <span class="material-symbols-outlined text-[18px]" {% if active_page == 'fixed_costs' %}style="font-variation-settings: 'FILL' 1"{% endif %}>calendar_month</span>
+        Gastos Fijos
+      </a>
+
+      <a href="/admin/{{ store.id }}/variable-costs?token={{ token }}"
+         class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all
+                {% if active_page == 'variable_costs' %}bg-brand-50 text-brand-700 font-medium{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+        <span class="material-symbols-outlined text-[18px]" {% if active_page == 'variable_costs' %}style="font-variation-settings: 'FILL' 1"{% endif %}>receipt_long</span>
+        Gastos Variables
+      </a>
+
+      <a href="/admin/{{ store.id }}/invoices?token={{ token }}"
+         class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all
+                {% if active_page == 'invoices' %}bg-brand-50 text-brand-700 font-medium{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+        <span class="material-symbols-outlined text-[18px]" {% if active_page == 'invoices' %}style="font-variation-settings: 'FILL' 1"{% endif %}>description</span>
+        Facturas
+      </a>
+    </nav>
+
+    <!-- Footer -->
+    <div class="px-3 py-4 border-t border-slate-100">
+      <a href="/dashboard/?store={{ store.id }}&token={{ token }}" target="_blank"
+         class="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors">
+        <span class="material-symbols-outlined text-[18px]">dashboard</span>
+        Ver Dashboard
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="ml-56">
+    <!-- Top bar -->
+    <header class="sticky top-0 z-30 bg-slate-50/80 backdrop-blur-sm border-b border-slate-200/60">
+      <div class="px-8 py-4 flex items-center justify-between">
+        <div>
+          <h1 class="text-lg font-semibold text-slate-900">{% block page_title %}{% endblock %}</h1>
+          <p class="text-xs text-slate-400 mt-0.5">{% block page_subtitle %}{% endblock %}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          {% block page_actions %}{% endblock %}
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-medium">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+            {{ store.periodo_activo }}
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <div class="px-8 py-6">
+      {% block content %}{% endblock %}
+    </div>
   </main>
 
-  <!-- Toast notifications -->
-  <div id="toast" class="fixed bottom-4 right-4 hidden bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm z-50 transition-all">
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 translate-y-2 opacity-0 pointer-events-none bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm z-50 transition-all duration-300 flex items-center gap-2">
+    <span class="material-symbols-outlined text-brand-400 text-base" id="toastIcon">check_circle</span>
     <span id="toastText"></span>
   </div>
 
   <script>
-    function showToast(msg, duration = 3000) {
+    function showToast(msg, type = 'success', duration = 3500) {
       const t = document.getElementById('toast');
+      const icon = document.getElementById('toastIcon');
       document.getElementById('toastText').textContent = msg;
-      t.classList.remove('hidden');
-      setTimeout(() => t.classList.add('hidden'), duration);
+      icon.textContent = type === 'error' ? 'error' : 'check_circle';
+      icon.className = `material-symbols-outlined text-base ${type === 'error' ? 'text-red-400' : 'text-brand-400'}`;
+      t.classList.remove('translate-y-2', 'opacity-0', 'pointer-events-none');
+      setTimeout(() => t.classList.add('translate-y-2', 'opacity-0', 'pointer-events-none'), duration);
     }
-
-    // HTMX: show toast on successful operations
-    document.body.addEventListener('htmx:afterSwap', function(evt) {
-      const msg = evt.detail.xhr.getResponseHeader('HX-Trigger-After-Swap');
-      if (msg) showToast(msg);
-    });
   </script>
   {% block scripts %}{% endblock %}
 </body>
