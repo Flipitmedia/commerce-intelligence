@@ -2,6 +2,7 @@
 config.py — Settings desde .env
 """
 import os
+import secrets
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -15,6 +16,7 @@ class Settings:
     PORT: int = int(os.getenv("PORT", "8000"))
     DEBUG: bool = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
     DATABASE_PATH: str = os.getenv("DATABASE_PATH", "data/ci.db")
+    ADMIN_TOKEN: str = os.getenv("ADMIN_TOKEN", "")
 
     @property
     def db_url(self) -> str:

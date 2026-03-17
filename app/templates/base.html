@@ -46,6 +46,13 @@
 
     <!-- Navigation -->
     <nav class="flex-1 px-3 py-4 space-y-0.5">
+      <a href="/admin/"
+         class="flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+         title="Requiere admin token">
+        <span class="material-symbols-outlined text-[14px]">arrow_back</span>
+        Todas las tiendas
+      </a>
+
       <p class="px-3 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Configuracion</p>
 
       <a href="/admin/{{ store.id }}?token={{ token }}"

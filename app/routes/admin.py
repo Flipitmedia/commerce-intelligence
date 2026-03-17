@@ -1,12 +1,14 @@
 """
-admin.py — Admin UI: config, costos, gastos, facturas, sync
+admin.py — Admin UI: super-admin, config, costos, gastos, facturas, sync
 Server-rendered con Jinja2. Forms POST para CRUD.
 """
+import secrets
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from app.database import query_one, query, execute
+from app.config import settings
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
@@ -16,6 +18,14 @@ CATEGORIAS_FIJOS = ["Plataforma", "Software", "Salarios", "Alquiler", "Contabili
 CATEGORIAS_VARIABLES = ["Packaging", "Envios", "Comisiones", "Marketing_otro", "Freelancers", "Otros"]
 
 
+def verify_admin_token(token: str):
+    """Verifica el master admin token."""
+    if not settings.ADMIN_TOKEN:
+        raise HTTPException(500, "ADMIN_TOKEN no configurado en el servidor")
+    if token != settings.ADMIN_TOKEN:
+        raise HTTPException(401, "Token de admin invalido")
+
+
 def get_store(store_id: str, token: str) -> dict:
     store = query_one("SELECT * FROM stores WHERE id = ?", (store_id,))
     if not store:
@@ -23,6 +33,40 @@ def get_store(store_id: str, token: str) -> dict:
     if store["api_token"] != token:
         raise HTTPException(401, "Token invalido")
     return store
+
+
+# ── Super Admin ─────────────────────────────────────────────────
+
+@router.get("/", response_class=HTMLResponse)
+def admin_stores_list(request: Request, token: str = ""):
+    """Lista todas las tiendas con tokens y links."""
+    verify_admin_token(token)
+    stores = query("SELECT id, name, api_token, periodo_activo, shopify_domain FROM stores ORDER BY name")
+    return templates.TemplateResponse("stores.html", {
+        "request": request, "stores": stores, "admin_token": token,
+    })
+
+
+@router.post("/new", response_class=HTMLResponse)
+def admin_store_create(
+    request: Request, token: str = "",
+    store_id: str = Form(""), store_name: str = Form(""),
+):
+    """Crea una tienda nueva con token auto-generado."""
+    verify_admin_token(token)
+    store_id = store_id.strip().lower().replace(" ", "-")
+    store_name = store_name.strip()
+    if not store_id or not store_name:
+        raise HTTPException(400, "ID y nombre son requeridos")
+    existing = query_one("SELECT id FROM stores WHERE id = ?", (store_id,))
+    if existing:
+        raise HTTPException(400, f"La tienda '{store_id}' ya existe")
+    api_token = secrets.token_urlsafe(32)
+    execute(
+        """INSERT INTO stores (id, name, api_token) VALUES (?, ?, ?)""",
+        (store_id, store_name, api_token),
+    )
+    return RedirectResponse(f"/admin/?token={token}", status_code=303)
 
 
 # ── Config ──────────────────────────────────────────────────────

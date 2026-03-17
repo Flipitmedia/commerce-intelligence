@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commerce Intelligence — Tiendas</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: { 50: '#f0fdf9', 100: '#ccfbef', 200: '#99f6de', 300: '#5ceaca', 400: '#2dd4ab', 500: '#14b892', 600: '#0d9477', 700: '#0f7661', 800: '#115e4f', 900: '#134e42' },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <div class="max-w-4xl mx-auto px-6 py-12">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-8">
+      <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center">
+        <span class="material-symbols-outlined text-white text-xl" style="font-variation-settings: 'FILL' 1">analytics</span>
+      </div>
+      <div>
+        <h1 class="text-xl font-semibold text-slate-900">Commerce Intelligence</h1>
+        <p class="text-xs text-slate-400">Panel de administracion — Tiendas</p>
+      </div>
+    </div>
+
+    <!-- Store list -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+      <div class="px-6 py-4 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-700">Tiendas registradas</h2>
+      </div>
+
+      {% if stores %}
+      <div class="divide-y divide-slate-100">
+        {% for s in stores %}
+        <div class="px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-slate-900">{{ s.name }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+              <code class="bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">{{ s.id }}</code>
+              {% if s.shopify_domain %}
+                <span class="ml-2">{{ s.shopify_domain }}</span>
+              {% else %}
+                <span class="ml-2 text-amber-500">Sin Shopify configurado</span>
+              {% endif %}
+              <span class="ml-2 text-slate-300">·</span>
+              <span class="ml-1">{{ s.periodo_activo }}</span>
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <!-- Token copy -->
+            <button onclick="copyToken('{{ s.api_token }}')" title="Copiar token"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-100 transition-colors border border-slate-200">
+              <span class="material-symbols-outlined text-[14px]">key</span>
+              Token
+            </button>
+
+            <!-- Admin link -->
+            <a href="/admin/{{ s.id }}?token={{ s.api_token }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors">
+              <span class="material-symbols-outlined text-[14px]">settings</span>
+              Admin
+            </a>
+
+            <!-- Dashboard link -->
+            <a href="/dashboard/?store={{ s.id }}&token={{ s.api_token }}" target="_blank"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-brand-500 hover:bg-brand-600 transition-colors">
+              <span class="material-symbols-outlined text-[14px]">dashboard</span>
+              Dashboard
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="px-6 py-12 text-center">
+        <span class="material-symbols-outlined text-4xl text-slate-300">storefront</span>
+        <p class="text-sm text-slate-400 mt-2">No hay tiendas registradas</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Create new store -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-700">Agregar tienda</h2>
+      </div>
+      <form action="/admin/new?token={{ admin_token }}" method="POST" class="px-6 py-5">
+        <div class="flex items-end gap-4">
+          <div class="flex-1">
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">ID (slug)</label>
+            <input type="text" name="store_id" required placeholder="mi-tienda"
+                   pattern="[a-z0-9\-]+" title="Solo minusculas, numeros y guiones"
+                   class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+          </div>
+          <div class="flex-1">
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">Nombre</label>
+            <input type="text" name="store_name" required placeholder="Mi Tienda"
+                   class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+          </div>
+          <button type="submit"
+                  class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-[16px]">add</span>
+            Crear
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-2">El token de API se genera automaticamente. Luego configura las credenciales de Shopify/Meta desde el admin de la tienda.</p>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 translate-y-2 opacity-0 pointer-events-none bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm z-50 transition-all duration-300 flex items-center gap-2">
+    <span class="material-symbols-outlined text-brand-400 text-base">check_circle</span>
+    <span id="toastText"></span>
+  </div>
+
+  <script>
+    function copyToken(token) {
+      navigator.clipboard.writeText(token).then(() => {
+        const t = document.getElementById('toast');
+        document.getElementById('toastText').textContent = 'Token copiado al portapapeles';
+        t.classList.remove('translate-y-2', 'opacity-0', 'pointer-events-none');
+        setTimeout(() => t.classList.add('translate-y-2', 'opacity-0', 'pointer-events-none'), 2500);
+      });
+    }
+  </script>
+
+</body>
+</html>
