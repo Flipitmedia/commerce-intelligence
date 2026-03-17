@@ -148,6 +148,30 @@ def build_pnl_cascade(pnl: dict) -> list[dict]:
 
 # ── Endpoints ───────────────────────────────────────────────────
 
+@router.get("/{store_id}/debug")
+def debug_data(store_id: str, token: str = ""):
+    """Debug: muestra conteo de ordenes por financial_status y periodo."""
+    from app.database import query
+    store = get_store_or_404(store_id, token)
+    status_counts = query(
+        "SELECT periodo, financial_status, COUNT(*) as cnt FROM orders WHERE store_id = ? GROUP BY periodo, financial_status ORDER BY periodo, financial_status",
+        (store_id,),
+    )
+    meta_counts = query(
+        "SELECT periodo, COUNT(*) as cnt, SUM(spend) as total_spend FROM meta_insights WHERE store_id = ? GROUP BY periodo",
+        (store_id,),
+    )
+    sample_order = query(
+        "SELECT id, financial_status, total_price, subtotal_price, total_discounts, total_shipping FROM orders WHERE store_id = ? LIMIT 3",
+        (store_id,),
+    )
+    return {
+        "orders_by_status": [dict(r) for r in status_counts],
+        "meta_by_periodo": [dict(r) for r in meta_counts],
+        "sample_orders": [dict(r) for r in sample_order],
+    }
+
+
 @router.get("/{store_id}/data")
 def get_data(store_id: str, token: str = ""):
     """JSON completo — mismo contrato que doGet de WebApp.gs."""
