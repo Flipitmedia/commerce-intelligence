@@ -206,8 +206,25 @@ def get_data(store_id: str, token: str = ""):
     }
 
 
+@router.get("/{store_id}/stats")
+def get_stats(store_id: str, token: str = ""):
+    """DB stats para la UI de sync."""
+    from app.database import query
+    store = get_store_or_404(store_id, token)
+    orders = query_one("SELECT COUNT(*) as c FROM orders WHERE store_id=?", (store_id,))
+    lines = query_one("SELECT COUNT(*) as c FROM order_lines WHERE store_id=?", (store_id,))
+    meta = query_one("SELECT COUNT(*) as c FROM meta_insights WHERE store_id=?", (store_id,))
+    periodos = query_one("SELECT COUNT(DISTINCT periodo) as c FROM orders WHERE store_id=?", (store_id,))
+    return {
+        "orders": orders["c"] if orders else 0,
+        "order_lines": lines["c"] if lines else 0,
+        "meta_insights": meta["c"] if meta else 0,
+        "periodos": periodos["c"] if periodos else 0,
+    }
+
+
 @router.post("/{store_id}/sync")
-def sync_periodo(store_id: str, token: str = "", background_tasks: BackgroundTasks = None):
+def sync_periodo(store_id: str, token: str = ""):
     """Sync periodo activo (Shopify + Meta)."""
     store = get_store_or_404(store_id, token)
 
@@ -230,23 +247,45 @@ def sync_periodo(store_id: str, token: str = "", background_tasks: BackgroundTas
     return {"status": "ok", "periodo": store["periodo_activo"], "results": results}
 
 
+@router.post("/{store_id}/sync/shopify")
+def sync_shopify_only(store_id: str, token: str = ""):
+    """Sync solo Shopify periodo activo."""
+    store = get_store_or_404(store_id, token)
+    if store["shopify_domain"] and store["shopify_client_id"]:
+        from app.sync_shopify import sync_shopify_periodo
+        return {"status": "ok", "periodo": store["periodo_activo"], "shopify": sync_shopify_periodo(store)}
+    return {"status": "skipped", "reason": "No Shopify credentials"}
+
+
+@router.post("/{store_id}/sync/meta")
+def sync_meta_only(store_id: str, token: str = ""):
+    """Sync solo Meta periodo activo."""
+    store = get_store_or_404(store_id, token)
+    if store["meta_access_token"] and store["meta_ad_account_id"]:
+        from app.sync_meta import sync_meta_periodo
+        return {"status": "ok", "periodo": store["periodo_activo"], "meta": sync_meta_periodo(store)}
+    return {"status": "skipped", "reason": "No Meta credentials"}
+
+
 @router.post("/{store_id}/sync/full")
-def sync_full(store_id: str, token: str = ""):
-    """Sync ultimos 12 meses (Shopify + Meta)."""
+def sync_full(store_id: str, token: str = "", source: str = ""):
+    """Sync ultimos 12 meses (Shopify + Meta, o solo uno si source='shopify'|'meta')."""
     store = get_store_or_404(store_id, token)
 
     results = {}
 
-    if store["shopify_domain"] and store["shopify_client_id"]:
-        from app.sync_shopify import sync_shopify_full
-        results["shopify"] = sync_shopify_full(store)
-    else:
-        results["shopify"] = {"skipped": True, "reason": "No Shopify credentials"}
+    if source != "meta":
+        if store["shopify_domain"] and store["shopify_client_id"]:
+            from app.sync_shopify import sync_shopify_full
+            results["shopify"] = sync_shopify_full(store)
+        else:
+            results["shopify"] = {"skipped": True, "reason": "No Shopify credentials"}
 
-    if store["meta_access_token"] and store["meta_ad_account_id"]:
-        from app.sync_meta import sync_meta_full
-        results["meta"] = sync_meta_full(store)
-    else:
-        results["meta"] = {"skipped": True, "reason": "No Meta credentials"}
+    if source != "shopify":
+        if store["meta_access_token"] and store["meta_ad_account_id"]:
+            from app.sync_meta import sync_meta_full
+            results["meta"] = sync_meta_full(store)
+        else:
+            results["meta"] = {"skipped": True, "reason": "No Meta credentials"}
 
     return {"status": "ok", "results": results}

@@ -22,16 +22,12 @@
 
     {% if store.shopify_domain and store.shopify_client_id %}
     <div class="space-y-3">
-      <form method="POST" action="/admin/{{ store.id }}/sync/shopify?token={{ token }}" onsubmit="syncStarted(this)">
-        <button type="submit" class="btn btn-primary w-full justify-center">
-          <span class="material-symbols-outlined text-base">sync</span> Sync Periodo Activo
-        </button>
-      </form>
-      <form method="POST" action="/admin/{{ store.id }}/sync/shopify-full?token={{ token }}" onsubmit="syncStarted(this)">
-        <button type="submit" class="btn btn-secondary w-full justify-center">
-          <span class="material-symbols-outlined text-base">history</span> Sync Completo (12 meses)
-        </button>
-      </form>
+      <button onclick="runSync('shopify')" class="btn btn-primary w-full justify-center">
+        <span class="material-symbols-outlined text-base">sync</span> Sync Periodo Activo
+      </button>
+      <button onclick="runSync('shopify-full')" class="btn btn-secondary w-full justify-center">
+        <span class="material-symbols-outlined text-base">history</span> Sync Completo (12 meses)
+      </button>
     </div>
     {% else %}
     <p class="text-sm text-gray-400">Configura las credenciales Shopify en la seccion Config.</p>
@@ -52,16 +48,12 @@
 
     {% if store.meta_access_token and store.meta_ad_account_id %}
     <div class="space-y-3">
-      <form method="POST" action="/admin/{{ store.id }}/sync/meta?token={{ token }}" onsubmit="syncStarted(this)">
-        <button type="submit" class="btn btn-primary w-full justify-center">
-          <span class="material-symbols-outlined text-base">sync</span> Sync Periodo Activo
-        </button>
-      </form>
-      <form method="POST" action="/admin/{{ store.id }}/sync/meta-full?token={{ token }}" onsubmit="syncStarted(this)">
-        <button type="submit" class="btn btn-secondary w-full justify-center">
-          <span class="material-symbols-outlined text-base">history</span> Sync Completo (12 meses)
-        </button>
-      </form>
+      <button onclick="runSync('meta')" class="btn btn-primary w-full justify-center">
+        <span class="material-symbols-outlined text-base">sync</span> Sync Periodo Activo
+      </button>
+      <button onclick="runSync('meta-full')" class="btn btn-secondary w-full justify-center">
+        <span class="material-symbols-outlined text-base">history</span> Sync Completo (12 meses)
+      </button>
     </div>
     {% else %}
     <p class="text-sm text-gray-400">Configura las credenciales Meta en la seccion Config.</p>
@@ -71,11 +63,9 @@
 
 <!-- Sync All button -->
 <div class="card mt-6">
-  <form method="POST" action="/admin/{{ store.id }}/sync/all?token={{ token }}" onsubmit="syncStarted(this)">
-    <button type="submit" class="btn btn-primary w-full justify-center text-lg py-3">
-      <span class="material-symbols-outlined text-xl">sync</span> Sync Todo (Shopify + Meta)
-    </button>
-  </form>
+  <button onclick="runSync('all')" class="btn btn-primary w-full justify-center text-lg py-3">
+    <span class="material-symbols-outlined text-xl">sync</span> Sync Todo (Shopify + Meta)
+  </button>
 </div>
 
 <!-- Loading overlay -->
@@ -88,54 +78,111 @@
   </div>
 </div>
 
-{% if result %}
-<div class="card mt-6">
-  <h3 class="text-lg font-semibold mb-2 text-green-700">✓ Resultado</h3>
-  <pre class="bg-gray-50 rounded-lg p-4 text-sm font-mono text-gray-700 overflow-x-auto">{{ result | tojson(indent=2) }}</pre>
-</div>
-{% endif %}
-
-{% if error %}
-<div class="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
-  <p class="text-red-700 text-sm"><strong>Error:</strong> {{ error }}</p>
-</div>
-{% endif %}
+<!-- Result area -->
+<div id="resultArea"></div>
 
 <!-- DB Stats -->
-<div class="card mt-6">
+<div class="card mt-6" id="statsCard">
   <h3 class="text-lg font-semibold mb-4">Estado de la Base de Datos</h3>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
     <div class="bg-gray-50 rounded-lg p-3 text-center">
-      <p class="text-2xl font-bold text-gray-900">{{ stats.orders }}</p>
+      <p class="text-2xl font-bold text-gray-900" id="statOrders">{{ stats.orders }}</p>
       <p class="text-xs text-gray-500">Ordenes</p>
     </div>
     <div class="bg-gray-50 rounded-lg p-3 text-center">
-      <p class="text-2xl font-bold text-gray-900">{{ stats.order_lines }}</p>
+      <p class="text-2xl font-bold text-gray-900" id="statLines">{{ stats.order_lines }}</p>
       <p class="text-xs text-gray-500">Line Items</p>
     </div>
     <div class="bg-gray-50 rounded-lg p-3 text-center">
-      <p class="text-2xl font-bold text-gray-900">{{ stats.meta_insights }}</p>
+      <p class="text-2xl font-bold text-gray-900" id="statMeta">{{ stats.meta_insights }}</p>
       <p class="text-xs text-gray-500">Meta Insights</p>
     </div>
     <div class="bg-gray-50 rounded-lg p-3 text-center">
-      <p class="text-2xl font-bold text-gray-900">{{ stats.periodos }}</p>
+      <p class="text-2xl font-bold text-gray-900" id="statPeriodos">{{ stats.periodos }}</p>
       <p class="text-xs text-gray-500">Periodos</p>
     </div>
   </div>
 </div>
 
 <script>
+const STORE_ID = "{{ store.id }}";
+const TOKEN = "{{ token }}";
 let timerInterval;
-function syncStarted(form) {
+
+async function runSync(type) {
   const overlay = document.getElementById('syncOverlay');
   const timer = document.getElementById('syncTimer');
+  const resultArea = document.getElementById('resultArea');
+
+  // Show overlay
   overlay.classList.remove('hidden');
   let seconds = 0;
   timerInterval = setInterval(() => {
     seconds++;
     timer.textContent = seconds + 's';
   }, 1000);
-  // Form submits normally — the page will reload with results
+
+  // Build the API URL
+  let url;
+  if (type === 'all') {
+    url = `/api/${STORE_ID}/sync?token=${TOKEN}`;
+  } else if (type === 'shopify') {
+    url = `/api/${STORE_ID}/sync/shopify?token=${TOKEN}`;
+  } else if (type === 'shopify-full') {
+    url = `/api/${STORE_ID}/sync/full?token=${TOKEN}&source=shopify`;
+  } else if (type === 'meta') {
+    url = `/api/${STORE_ID}/sync/meta?token=${TOKEN}`;
+  } else if (type === 'meta-full') {
+    url = `/api/${STORE_ID}/sync/full?token=${TOKEN}&source=meta`;
+  }
+
+  try {
+    const resp = await fetch(url, { method: 'POST' });
+    const data = await resp.json();
+
+    clearInterval(timerInterval);
+    overlay.classList.add('hidden');
+
+    if (resp.ok) {
+      resultArea.innerHTML = `
+        <div class="card mt-6">
+          <h3 class="text-lg font-semibold mb-2 text-green-700">✓ Sync completado en ${seconds}s</h3>
+          <pre class="bg-gray-50 rounded-lg p-4 text-sm font-mono text-gray-700 overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>
+        </div>`;
+    } else {
+      resultArea.innerHTML = `
+        <div class="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
+          <p class="text-red-700 text-sm"><strong>Error:</strong> ${JSON.stringify(data)}</p>
+        </div>`;
+    }
+
+    // Reload stats
+    refreshStats();
+
+  } catch (err) {
+    clearInterval(timerInterval);
+    overlay.classList.add('hidden');
+    resultArea.innerHTML = `
+      <div class="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
+        <p class="text-red-700 text-sm"><strong>Error de conexion:</strong> ${err.message}</p>
+      </div>`;
+  }
+}
+
+async function refreshStats() {
+  try {
+    const resp = await fetch(`/api/${STORE_ID}/stats?token=${TOKEN}`);
+    if (resp.ok) {
+      const s = await resp.json();
+      document.getElementById('statOrders').textContent = s.orders || 0;
+      document.getElementById('statLines').textContent = s.order_lines || 0;
+      document.getElementById('statMeta').textContent = s.meta_insights || 0;
+      document.getElementById('statPeriodos').textContent = s.periodos || 0;
+    }
+  } catch(e) {
+    // Fallback: reload the page
+    window.location.reload();
+  }
 }
 </script>
 {% endblock %}
