@@ -112,26 +112,45 @@ def shopify_fetch_all(domain: str, token: str, endpoint: str, params: dict) -> l
     all_items = []
     base_url = f"https://{domain}/admin/api/{SHOPIFY_API_VERSION}/{endpoint}"
 
+    print(f"    [fetch_all] URL: {base_url}")
+    print(f"    [fetch_all] params: {params}")
+    print(f"    [fetch_all] token: {token[:8]}...{token[-4:]}")
+
     with httpx.Client(timeout=60) as client:
         url = base_url
         first = True
+        page = 0
 
         while url:
+            page += 1
             if first:
                 resp = client.get(url, params=params, headers={"X-Shopify-Access-Token": token})
                 first = False
             else:
                 resp = client.get(url, headers={"X-Shopify-Access-Token": token})
 
+            print(f"    [fetch_all] page {page}: HTTP {resp.status_code}")
+
             if resp.status_code != 200:
+                print(f"    [fetch_all] ERROR body: {resp.text[:500]}")
                 raise RuntimeError(
                     f"Shopify API error {resp.status_code}: {resp.text[:500]}"
                 )
 
             data = resp.json()
-            resource_key = list(data.keys())[0]
-            items = data.get(resource_key, [])
-            all_items.extend(items)
+            keys = list(data.keys())
+            resource_key = keys[0] if keys else None
+            print(f"    [fetch_all] response keys: {keys}, resource_key: {resource_key}")
+
+            if resource_key:
+                items = data.get(resource_key, [])
+                if isinstance(items, list):
+                    print(f"    [fetch_all] items count: {len(items)}")
+                    all_items.extend(items)
+                else:
+                    print(f"    [fetch_all] WARNING: items is {type(items).__name__}, not list!")
+            else:
+                print(f"    [fetch_all] WARNING: no keys in response!")
 
             # Paginacion via Link header
             url = None
@@ -146,6 +165,7 @@ def shopify_fetch_all(domain: str, token: str, endpoint: str, params: dict) -> l
             if url:
                 time.sleep(0.5)
 
+    print(f"    [fetch_all] TOTAL: {len(all_items)} items in {page} pages")
     return all_items
 
 
@@ -257,7 +277,26 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
     since, until = period_to_date_range(periodo)
     store_tz = store.get("timezone", "America/Santiago")
 
-    print(f"  Sync Shopify [{store['id']}]: periodo={periodo}")
+    print(f"  Sync Shopify [{store['id']}]: periodo={periodo}, domain={store['shopify_domain']}")
+    print(f"  Token: {token[:8]}...{token[-4:]}, date_range: {since} → {until}")
+
+    # DEBUG: prueba directa para comparar con shopify_fetch_all
+    try:
+        with httpx.Client(timeout=30) as _c:
+            _url = f"https://{store['shopify_domain']}/admin/api/{SHOPIFY_API_VERSION}/orders.json"
+            _r = _c.get(_url, params={
+                "status": "any",
+                "created_at_min": since,
+                "created_at_max": until,
+                "limit": 3,
+            }, headers={"X-Shopify-Access-Token": token})
+            _data = _r.json()
+            _orders = _data.get("orders", [])
+            print(f"  DEBUG DIRECT TEST: HTTP {_r.status_code}, keys={list(_data.keys())}, orders={len(_orders)}")
+            if _orders:
+                print(f"  DEBUG first order: id={_orders[0]['id']}, created={_orders[0].get('created_at')}")
+    except Exception as _e:
+        print(f"  DEBUG DIRECT TEST ERROR: {_e}")
 
     # 1. Ordenes creadas en el periodo (comportamiento original)
     orders_created = shopify_fetch_all(store["shopify_domain"], token, "orders.json", {
