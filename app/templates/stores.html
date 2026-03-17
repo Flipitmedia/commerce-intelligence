@@ -37,6 +37,12 @@
         <h1 class="text-xl font-semibold text-slate-900">Commerce Intelligence</h1>
         <p class="text-xs text-slate-400">Panel de administracion — Tiendas</p>
       </div>
+      <div class="ml-auto">
+        <a href="/admin/logout" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+          <span class="material-symbols-outlined text-[14px]">logout</span>
+          Salir
+        </a>
+      </div>
     </div>
 
     <!-- Store list -->
@@ -101,7 +107,7 @@
       <div class="px-6 py-4 border-b border-slate-100">
         <h2 class="text-sm font-semibold text-slate-700">Agregar tienda</h2>
       </div>
-      <form action="/admin/new?token={{ admin_token }}" method="POST" class="px-6 py-5">
+      <form action="/admin/new" method="POST" class="px-6 py-5">
         <div class="flex items-end gap-4">
           <div class="flex-1">
             <label class="block text-xs font-medium text-slate-600 mb-1.5">ID (slug)</label>

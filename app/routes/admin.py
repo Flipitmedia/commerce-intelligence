@@ -2,6 +2,7 @@
 admin.py — Admin UI: super-admin, config, costos, gastos, facturas, sync
 Server-rendered con Jinja2. Forms POST para CRUD.
 """
+import hashlib
 import secrets
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, Form
@@ -17,13 +18,21 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent
 CATEGORIAS_FIJOS = ["Plataforma", "Software", "Salarios", "Alquiler", "Contabilidad", "Seguros", "Otros"]
 CATEGORIAS_VARIABLES = ["Packaging", "Envios", "Comisiones", "Marketing_otro", "Freelancers", "Otros"]
 
+COOKIE_NAME = "ci_admin"
 
-def verify_admin_token(token: str):
-    """Verifica el master admin token."""
+
+def _admin_cookie_value() -> str:
+    """Hash del ADMIN_TOKEN para guardar en cookie (no guarda el token raw)."""
+    return hashlib.sha256(f"ci:{settings.ADMIN_TOKEN}".encode()).hexdigest()[:32]
+
+
+def verify_admin(request: Request):
+    """Verifica sesion de admin via cookie."""
     if not settings.ADMIN_TOKEN:
         raise HTTPException(500, "ADMIN_TOKEN no configurado en el servidor")
-    if token != settings.ADMIN_TOKEN:
-        raise HTTPException(401, "Token de admin invalido")
+    cookie = request.cookies.get(COOKIE_NAME, "")
+    if cookie != _admin_cookie_value():
+        raise HTTPException(401, "No autorizado")
 
 
 def get_store(store_id: str, token: str) -> dict:
@@ -35,25 +44,55 @@ def get_store(store_id: str, token: str) -> dict:
     return store
 
 
-# ── Super Admin ─────────────────────────────────────────────────
+# ── Super Admin: Login ──────────────────────────────────────────
 
 @router.get("/", response_class=HTMLResponse)
-def admin_stores_list(request: Request, token: str = ""):
-    """Lista todas las tiendas con tokens y links."""
-    verify_admin_token(token)
-    stores = query("SELECT id, name, api_token, periodo_activo, shopify_domain FROM stores ORDER BY name")
-    return templates.TemplateResponse("stores.html", {
-        "request": request, "stores": stores, "admin_token": token,
+def admin_login_or_list(request: Request):
+    """Muestra login o lista de tiendas segun sesion."""
+    if not settings.ADMIN_TOKEN:
+        raise HTTPException(500, "ADMIN_TOKEN no configurado en el servidor")
+    # Si ya tiene cookie valida, mostrar lista
+    cookie = request.cookies.get(COOKIE_NAME, "")
+    if cookie == _admin_cookie_value():
+        stores = query("SELECT id, name, api_token, periodo_activo, shopify_domain FROM stores ORDER BY name")
+        return templates.TemplateResponse("stores.html", {
+            "request": request, "stores": stores,
+        })
+    # Si no, mostrar login
+    return templates.TemplateResponse("login.html", {
+        "request": request, "error": None,
     })
 
 
+@router.post("/login", response_class=HTMLResponse)
+def admin_login(request: Request, password: str = Form("")):
+    """Valida clave y setea cookie de sesion."""
+    if not settings.ADMIN_TOKEN:
+        raise HTTPException(500, "ADMIN_TOKEN no configurado en el servidor")
+    if password != settings.ADMIN_TOKEN:
+        return templates.TemplateResponse("login.html", {
+            "request": request, "error": "Clave incorrecta",
+        })
+    response = RedirectResponse("/admin/", status_code=303)
+    response.set_cookie(
+        COOKIE_NAME, _admin_cookie_value(),
+        httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7,  # 7 dias
+    )
+    return response
+
+
+@router.get("/logout")
+def admin_logout():
+    """Cierra sesion de admin."""
+    response = RedirectResponse("/admin/", status_code=303)
+    response.delete_cookie(COOKIE_NAME)
+    return response
+
+
 @router.post("/new", response_class=HTMLResponse)
-def admin_store_create(
-    request: Request, token: str = "",
-    store_id: str = Form(""), store_name: str = Form(""),
-):
+def admin_store_create(request: Request, store_id: str = Form(""), store_name: str = Form("")):
     """Crea una tienda nueva con token auto-generado."""
-    verify_admin_token(token)
+    verify_admin(request)
     store_id = store_id.strip().lower().replace(" ", "-")
     store_name = store_name.strip()
     if not store_id or not store_name:
@@ -66,7 +105,7 @@ def admin_store_create(
         """INSERT INTO stores (id, name, api_token) VALUES (?, ?, ?)""",
         (store_id, store_name, api_token),
     )
-    return RedirectResponse(f"/admin/?token={token}", status_code=303)
+    return RedirectResponse("/admin/", status_code=303)
 
 
 # ── Config ──────────────────────────────────────────────────────
