@@ -105,7 +105,7 @@ def compute_pnl(store: dict, periodo: str | None = None) -> dict:
         FROM fixed_costs
         WHERE store_id = ?
           AND ((recurring = 0 AND periodo = ?)
-            OR (recurring = 1 AND periodo >= ?))
+            OR (recurring = 1 AND periodo <= ?))
     """, (tax, sid, periodo, periodo))
 
     # 5. Gastos variables (v2: excluye categorias auto-calculadas, respeta tax_included)
