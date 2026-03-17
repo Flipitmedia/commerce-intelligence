@@ -147,7 +147,7 @@ def shopify_fetch_all(domain: str, token: str, endpoint: str, params: dict) -> l
 
 # ── Sync functions ──────────────────────────────────────────────
 
-def extract_order_data(order: dict) -> tuple[list, list[list]]:
+def extract_order_data(order: dict, store_id: str) -> tuple[list, list[list]]:
     """
     Extrae datos de un order de Shopify.
     Retorna (order_row, [line_rows]).
@@ -164,6 +164,7 @@ def extract_order_data(order: dict) -> tuple[list, list[list]]:
 
     order_data = {
         "id": str(order["id"]),
+        "store_id": store_id,
         "created_at": created_at,
         "periodo": periodo,
         "financial_status": order.get("financial_status", ""),
@@ -182,6 +183,7 @@ def extract_order_data(order: dict) -> tuple[list, list[list]]:
     for item in (order.get("line_items") or []):
         line_items.append({
             "order_id": str(order["id"]),
+            "store_id": store_id,
             "periodo": periodo,
             "financial_status": order.get("financial_status", ""),
             "item_name": item.get("name", ""),
@@ -218,7 +220,7 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
     order_rows = []
     line_rows = []
     for order in orders:
-        od, lines = extract_order_data(order)
+        od, lines = extract_order_data(order, store["id"])
         od["store_id"] = store["id"]
         order_rows.append(od)
         for line in lines:
@@ -293,7 +295,7 @@ def sync_shopify_full(store: dict) -> dict:
         order_rows = []
         line_rows = []
         for order in orders:
-            od, lines = extract_order_data(order)
+            od, lines = extract_order_data(order, store["id"])
             od["store_id"] = store["id"]
             order_rows.append(od)
             for line in lines:
