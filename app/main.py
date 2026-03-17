@@ -99,10 +99,5 @@ app.include_router(admin_router)
 
 @app.get("/")
 def root():
-    from app.database import query
-    stores = query("SELECT id, name FROM stores")
-    return {
-        "app": "Commerce Intelligence",
-        "version": "2.4.0",
-        "stores": {s["id"]: {"name": s["name"]} for s in stores},
-    }
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/admin/", status_code=302)
