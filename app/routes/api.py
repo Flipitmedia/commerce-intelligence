@@ -232,15 +232,21 @@ def sync_periodo(store_id: str, token: str = ""):
 
     # Shopify
     if store["shopify_domain"] and store["shopify_client_id"]:
-        from app.sync_shopify import sync_shopify_periodo
-        results["shopify"] = sync_shopify_periodo(store)
+        try:
+            from app.sync_shopify import sync_shopify_periodo
+            results["shopify"] = sync_shopify_periodo(store)
+        except Exception as e:
+            results["shopify"] = {"error": True, "message": str(e)}
     else:
         results["shopify"] = {"skipped": True, "reason": "No Shopify credentials"}
 
     # Meta
     if store["meta_access_token"] and store["meta_ad_account_id"]:
-        from app.sync_meta import sync_meta_periodo
-        results["meta"] = sync_meta_periodo(store)
+        try:
+            from app.sync_meta import sync_meta_periodo
+            results["meta"] = sync_meta_periodo(store)
+        except Exception as e:
+            results["meta"] = {"error": True, "message": str(e)}
     else:
         results["meta"] = {"skipped": True, "reason": "No Meta credentials"}
 
@@ -252,8 +258,11 @@ def sync_shopify_only(store_id: str, token: str = ""):
     """Sync solo Shopify periodo activo."""
     store = get_store_or_404(store_id, token)
     if store["shopify_domain"] and store["shopify_client_id"]:
-        from app.sync_shopify import sync_shopify_periodo
-        return {"status": "ok", "periodo": store["periodo_activo"], "shopify": sync_shopify_periodo(store)}
+        try:
+            from app.sync_shopify import sync_shopify_periodo
+            return {"status": "ok", "periodo": store["periodo_activo"], "shopify": sync_shopify_periodo(store)}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     return {"status": "skipped", "reason": "No Shopify credentials"}
 
 
@@ -262,8 +271,11 @@ def sync_meta_only(store_id: str, token: str = ""):
     """Sync solo Meta periodo activo."""
     store = get_store_or_404(store_id, token)
     if store["meta_access_token"] and store["meta_ad_account_id"]:
-        from app.sync_meta import sync_meta_periodo
-        return {"status": "ok", "periodo": store["periodo_activo"], "meta": sync_meta_periodo(store)}
+        try:
+            from app.sync_meta import sync_meta_periodo
+            return {"status": "ok", "periodo": store["periodo_activo"], "meta": sync_meta_periodo(store)}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     return {"status": "skipped", "reason": "No Meta credentials"}
 
 
@@ -276,15 +288,21 @@ def sync_full(store_id: str, token: str = "", source: str = ""):
 
     if source != "meta":
         if store["shopify_domain"] and store["shopify_client_id"]:
-            from app.sync_shopify import sync_shopify_full
-            results["shopify"] = sync_shopify_full(store)
+            try:
+                from app.sync_shopify import sync_shopify_full
+                results["shopify"] = sync_shopify_full(store)
+            except Exception as e:
+                results["shopify"] = {"error": True, "message": str(e)}
         else:
             results["shopify"] = {"skipped": True, "reason": "No Shopify credentials"}
 
     if source != "shopify":
         if store["meta_access_token"] and store["meta_ad_account_id"]:
-            from app.sync_meta import sync_meta_full
-            results["meta"] = sync_meta_full(store)
+            try:
+                from app.sync_meta import sync_meta_full
+                results["meta"] = sync_meta_full(store)
+            except Exception as e:
+                results["meta"] = {"error": True, "message": str(e)}
         else:
             results["meta"] = {"skipped": True, "reason": "No Meta credentials"}
 
