@@ -91,9 +91,16 @@
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Monto</label>
         <input type="number" step="1" name="amount" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" required>
       </div>
-      <div class="flex items-center gap-2">
-        <input type="checkbox" name="recurring" id="recurring" value="1" class="rounded border-slate-300 text-brand-500 focus:ring-brand-500">
-        <label for="recurring" class="text-xs text-slate-600">Recurrente (se aplica todos los meses)</label>
+      <div class="space-y-2">
+        <div class="flex items-center gap-2">
+          <input type="hidden" name="tax_included" value="0">
+          <input type="checkbox" name="tax_included" id="tax_included" value="1" checked class="rounded border-slate-300 text-brand-500 focus:ring-brand-500">
+          <label for="tax_included" class="text-xs text-slate-600">IVA incluido en el monto</label>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" name="recurring" id="recurring" value="1" class="rounded border-slate-300 text-brand-500 focus:ring-brand-500">
+          <label for="recurring" class="text-xs text-slate-600">Recurrente (se aplica todos los meses)</label>
+        </div>
       </div>
       <div>
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Notas</label>

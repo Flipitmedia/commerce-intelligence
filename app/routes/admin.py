@@ -43,6 +43,8 @@ def admin_config_save(
     comision_shopify: float = Form(0.01),
     cogs_method: str = Form("porcentaje_fijo"), cogs_pct: float = Form(0.35),
     fulfillment_cost: float = Form(1000), costo_envio_gratis: float = Form(4500),
+    costo_envio_estimado: float = Form(0),
+    timezone: str = Form("America/Santiago"),
     target_mer: float = Form(3.0), target_margen: float = Form(0.40),
     target_utilidad: float = Form(0.20), target_roas_meta: float = Form(4.0),
     shopify_domain: str = Form(""), shopify_client_id: str = Form(""),
@@ -56,6 +58,7 @@ def admin_config_save(
             name=?, currency=?, periodo_activo=?, tax_rate=?,
             comision_pasarela=?, comision_shopify=?,
             cogs_method=?, cogs_pct=?, fulfillment_cost=?, costo_envio_gratis=?,
+            costo_envio_estimado=?, timezone=?,
             target_mer=?, target_margen=?, target_utilidad=?, target_roas_meta=?,
             shopify_domain=?, shopify_client_id=?, shopify_client_secret=?,
             meta_access_token=?, meta_ad_account_id=?,
@@ -65,6 +68,7 @@ def admin_config_save(
         name, currency, periodo_activo, tax_rate,
         comision_pasarela, comision_shopify,
         cogs_method, cogs_pct, fulfillment_cost, costo_envio_gratis,
+        costo_envio_estimado, timezone,
         target_mer, target_margen, target_utilidad, target_roas_meta,
         shopify_domain, shopify_client_id, shopify_client_secret,
         meta_access_token, meta_ad_account_id,
@@ -127,13 +131,15 @@ def admin_fixed_costs_add(
     store_id: str, token: str = "",
     periodo: str = Form(""), category: str = Form(""),
     description: str = Form(""), amount: float = Form(0),
-    recurring: str = Form("0"), notes: str = Form(""),
+    recurring: str = Form("0"), tax_included: str = Form("1"),
+    notes: str = Form(""),
 ):
     get_store(store_id, token)
     rec = 1 if recurring == "1" else 0
+    tax_inc = 1 if tax_included == "1" else 0
     execute(
-        "INSERT INTO fixed_costs (store_id, periodo, category, description, amount, recurring, notes) VALUES (?,?,?,?,?,?,?)",
-        (store_id, periodo, category, description, amount, rec, notes),
+        "INSERT INTO fixed_costs (store_id, periodo, category, description, amount, recurring, tax_included, notes) VALUES (?,?,?,?,?,?,?,?)",
+        (store_id, periodo, category, description, amount, rec, tax_inc, notes),
     )
     return RedirectResponse(f"/admin/{store_id}/fixed-costs?token={token}", status_code=303)
 
@@ -165,12 +171,14 @@ def admin_variable_costs_add(
     store_id: str, token: str = "",
     date: str = Form(""), periodo: str = Form(""),
     category: str = Form(""), description: str = Form(""),
-    amount: float = Form(0), notes: str = Form(""),
+    amount: float = Form(0), tax_included: str = Form("1"),
+    notes: str = Form(""),
 ):
     get_store(store_id, token)
+    tax_inc = 1 if tax_included == "1" else 0
     execute(
-        "INSERT INTO variable_costs (store_id, date, periodo, category, description, amount, notes) VALUES (?,?,?,?,?,?,?)",
-        (store_id, date, periodo, category, description, amount, notes),
+        "INSERT INTO variable_costs (store_id, date, periodo, category, description, amount, tax_included, notes) VALUES (?,?,?,?,?,?,?,?)",
+        (store_id, date, periodo, category, description, amount, tax_inc, notes),
     )
     return RedirectResponse(f"/admin/{store_id}/variable-costs?token={token}", status_code=303)
 
@@ -204,14 +212,19 @@ def admin_invoices_add(
     supplier: str = Form(""), description: str = Form(""),
     net_amount: float = Form(0), iva: float = Form(0),
     total_amount: float = Form(0), invoice_number: str = Form(""),
+    impacts_pnl: str = Form("0"), pnl_category: str = Form(""),
     notes: str = Form(""),
 ):
     get_store(store_id, token)
+    imp_pnl = 1 if impacts_pnl == "1" else 0
+    # v2.1: si impacts_pnl=1 pero no hay categoria valida, forzar no-impact
+    if imp_pnl == 1 and pnl_category not in ("cogs", "fixed", "variable"):
+        imp_pnl = 0
     execute(
         """INSERT INTO purchase_invoices
-        (store_id, date, periodo, supplier, description, net_amount, iva, total_amount, invoice_number, notes)
-        VALUES (?,?,?,?,?,?,?,?,?,?)""",
-        (store_id, date, periodo, supplier, description, net_amount, iva, total_amount, invoice_number, notes),
+        (store_id, date, periodo, supplier, description, net_amount, iva, total_amount, invoice_number, impacts_pnl, pnl_category, notes)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (store_id, date, periodo, supplier, description, net_amount, iva, total_amount, invoice_number, imp_pnl, pnl_category, notes),
     )
     return RedirectResponse(f"/admin/{store_id}/invoices?token={token}", status_code=303)
 
@@ -228,6 +241,7 @@ def admin_invoices_delete(store_id: str, item_id: int, token: str = ""):
 def get_db_stats(store_id: str) -> dict:
     orders = query_one("SELECT COUNT(*) as c FROM orders WHERE store_id=?", (store_id,))
     lines = query_one("SELECT COUNT(*) as c FROM order_lines WHERE store_id=?", (store_id,))
+    refunds = query_one("SELECT COUNT(*) as c FROM order_refunds WHERE store_id=?", (store_id,))
     meta = query_one("SELECT COUNT(*) as c FROM meta_insights WHERE store_id=?", (store_id,))
     periodos = query_one(
         "SELECT COUNT(DISTINCT periodo) as c FROM orders WHERE store_id=?", (store_id,)
@@ -235,6 +249,7 @@ def get_db_stats(store_id: str) -> dict:
     return {
         "orders": orders["c"] if orders else 0,
         "order_lines": lines["c"] if lines else 0,
+        "order_refunds": refunds["c"] if refunds else 0,
         "meta_insights": meta["c"] if meta else 0,
         "periodos": periodos["c"] if periodos else 0,
     }

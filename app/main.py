@@ -36,18 +36,9 @@ app.include_router(admin_router)
 @app.get("/")
 def root():
     from app.database import query
-    stores = query("SELECT id, name, api_token FROM stores")
-    store_links = {}
-    for s in stores:
-        store_links[s["id"]] = {
-            "name": s["name"],
-            "token": s["api_token"],
-            "admin": f"/admin/{s['id']}?token={s['api_token']}",
-            "dashboard": f"/dashboard/?store={s['id']}&token={s['api_token']}",
-            "api": f"/api/{s['id']}/data?token={s['api_token']}",
-        }
+    stores = query("SELECT id, name FROM stores")
     return {
         "app": "Commerce Intelligence",
-        "version": "1.0.0",
-        "stores": store_links,
+        "version": "2.4.0",
+        "stores": {s["id"]: {"name": s["name"]} for s in stores},
     }

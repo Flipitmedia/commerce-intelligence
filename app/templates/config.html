@@ -91,6 +91,20 @@
           <label class="block text-xs font-medium text-slate-500 mb-1.5">Costo envio gratis</label>
           <input type="number" step="1" name="costo_envio_gratis" value="{{ store.costo_envio_gratis }}" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
         </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Costo envio estimado (courier)</label>
+          <input type="number" step="1" name="costo_envio_estimado" value="{{ store.costo_envio_estimado or 0 }}" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
+          <p class="text-[10px] text-slate-400 mt-1">Costo real promedio del courier por despacho. Si es 0, se usa el ingreso cobrado como proxy.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Zona horaria</label>
+          <select name="timezone" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
+            {% for tz in ['America/Santiago', 'America/Bogota', 'America/Mexico_City', 'America/Argentina/Buenos_Aires', 'America/Sao_Paulo', 'America/Lima', 'UTC'] %}
+            <option value="{{ tz }}" {% if store.timezone == tz %}selected{% endif %}>{{ tz }}</option>
+            {% endfor %}
+          </select>
+          <p class="text-[10px] text-slate-400 mt-1">Para asignar pedidos al mes correcto en horario local.</p>
+        </div>
       </div>
     </div>
   </section>

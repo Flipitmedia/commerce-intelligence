@@ -9,7 +9,7 @@ from app.pnl import compute_pnl, compute_historico
 
 router = APIRouter(prefix="/api", tags=["api"])
 
-CI_VERSION = "1.0.0"
+CI_VERSION = "2.4.0"
 
 
 def get_store_or_404(store_id: str, token: str) -> dict:
@@ -28,8 +28,8 @@ def build_kpis(pnl: dict, store: dict) -> list[dict]:
     Replica lo que DASHBOARD mostraba.
     """
     def status(value, target, higher_is_better=True):
-        if target == 0:
-            return "OK"
+        if value is None or target == 0:
+            return "N/A" if value is None else "OK"
         ratio = value / target if target != 0 else 0
         if higher_is_better:
             if ratio >= 1.0:
@@ -109,7 +109,7 @@ def build_kpis(pnl: dict, store: dict) -> list[dict]:
             "name": "Break-even ROAS",
             "value": pnl["breakeven_roas"],
             "target": None,
-            "status": "OK",
+            "status": "N/A" if pnl["breakeven_roas"] is None else "OK",
         },
     ]
 
@@ -117,21 +117,37 @@ def build_kpis(pnl: dict, store: dict) -> list[dict]:
 def build_pnl_cascade(pnl: dict) -> list[dict]:
     """
     Genera P&L en formato cascada para el dashboard.
-    Replica las 18 filas de DASHBOARD A18:C35.
+    v2.3: Incluye fila de ajuste de reconciliacion si la cascada visual
+    (ventas_brutas - descuentos + envios - devoluciones) difiere de
+    facturacion autoritativa (SUM current_total_price) por >= $1.
     """
-    ingresos = pnl["ingresos_netos"] if pnl["ingresos_netos"] != 0 else 1
+    ingresos = pnl["ingresos_netos"]
 
     def pct(val):
-        return round(val / ingresos, 4) if ingresos != 0 else 0
+        if ingresos is None or ingresos <= 0:
+            return None
+        return round(val / ingresos, 4)
+
+    # v2.3: Cascade visual reconciliation check.
+    # ventas_brutas - descuentos + envios = total_cobrado (original)
+    # facturacion = total_cobrado - devoluciones = total_retenido (authoritative)
+    # If rounding causes mismatch, add adjustment row.
+    cascade_sum = pnl["ventas_brutas"] - pnl["descuentos"] + pnl["ingreso_envios"] - pnl["devoluciones"]
+    ajuste = pnl["facturacion"] - cascade_sum  # should be 0; non-zero = rounding/tax diff
 
     # Concept names MUST match dashboard PNL_STEPS keys exactly
-    return [
+    rows = [
         {"concept": "(+) Ventas Brutas (IVA incl.)", "amount": pnl["ventas_brutas"], "pctOfSales": pct(pnl["ventas_brutas"])},
         {"concept": "(-) Descuentos", "amount": -pnl["descuentos"], "pctOfSales": pct(-pnl["descuentos"])},
         {"concept": "(+) Recaudado en Envios", "amount": pnl["ingreso_envios"], "pctOfSales": pct(pnl["ingreso_envios"])},
+        {"concept": "(-) Devoluciones", "amount": -pnl["devoluciones"], "pctOfSales": pct(-pnl["devoluciones"])},
+    ]
+    if abs(ajuste) >= 1:
+        rows.append({"concept": "(±) Ajuste de Reconciliacion", "amount": ajuste, "pctOfSales": pct(ajuste)})
+    rows += [
         {"concept": "(=) Facturacion (con IVA)", "amount": pnl["facturacion"], "pctOfSales": pct(pnl["facturacion"])},
         {"concept": "(-) IVA Debito Fiscal", "amount": -pnl["iva_debito"], "pctOfSales": pct(-pnl["iva_debito"])},
-        {"concept": "(=) Ingresos Netos (sin IVA)", "amount": pnl["ingresos_netos"], "pctOfSales": 1.0},
+        {"concept": "(=) Ingresos Netos (sin IVA)", "amount": pnl["ingresos_netos"], "pctOfSales": 1.0 if ingresos and ingresos > 0 else None},
         {"concept": "(-) Costo de Productos", "amount": -pnl["costo_productos"], "pctOfSales": pct(-pnl["costo_productos"])},
         {"concept": "(-) Picking y Packing", "amount": -pnl["picking_packing"], "pctOfSales": pct(-pnl["picking_packing"])},
         {"concept": "(-) Costo Total Envios", "amount": -pnl["costo_envios"], "pctOfSales": pct(-pnl["costo_envios"])},
@@ -144,6 +160,7 @@ def build_pnl_cascade(pnl: dict) -> list[dict]:
         {"concept": "(=) Total Gastos Op.", "amount": -pnl["total_gastos_op"], "pctOfSales": pct(-pnl["total_gastos_op"])},
         {"concept": "(=) UTILIDAD OPERACIONAL", "amount": pnl["utilidad_op"], "pctOfSales": pnl["utilidad_op_pct"]},
     ]
+    return rows
 
 
 # ── Endpoints ───────────────────────────────────────────────────
@@ -213,11 +230,13 @@ def get_stats(store_id: str, token: str = ""):
     store = get_store_or_404(store_id, token)
     orders = query_one("SELECT COUNT(*) as c FROM orders WHERE store_id=?", (store_id,))
     lines = query_one("SELECT COUNT(*) as c FROM order_lines WHERE store_id=?", (store_id,))
+    refunds = query_one("SELECT COUNT(*) as c FROM order_refunds WHERE store_id=?", (store_id,))
     meta = query_one("SELECT COUNT(*) as c FROM meta_insights WHERE store_id=?", (store_id,))
     periodos = query_one("SELECT COUNT(DISTINCT periodo) as c FROM orders WHERE store_id=?", (store_id,))
     return {
         "orders": orders["c"] if orders else 0,
         "order_lines": lines["c"] if lines else 0,
+        "order_refunds": refunds["c"] if refunds else 0,
         "meta_insights": meta["c"] if meta else 0,
         "periodos": periodos["c"] if periodos else 0,
     }

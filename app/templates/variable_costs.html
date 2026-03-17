@@ -75,11 +75,12 @@
       </div>
       <div>
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Categoria</label>
-        <select name="category" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
+        <select name="category" id="var_category" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" onchange="checkAutoCategory()">
           {% for cat in categories %}
-          <option value="{{ cat }}">{{ cat }}</option>
+          <option value="{{ cat }}" {% if cat in ['Envios', 'Comisiones'] %}data-auto="1"{% endif %}>{{ cat }}{% if cat in ['Envios', 'Comisiones'] %} (auto-calculado){% endif %}</option>
           {% endfor %}
         </select>
+        <p id="auto_warning" class="hidden text-[10px] text-amber-600 mt-1">Esta categoria ya se calcula automaticamente en el P&L. Los montos ingresados aqui seran ignorados.</p>
       </div>
       <div>
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Descripcion</label>
@@ -88,6 +89,11 @@
       <div>
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Monto</label>
         <input type="number" step="1" name="amount" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" required>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="hidden" name="tax_included" value="0">
+        <input type="checkbox" name="tax_included" id="var_tax_included" value="1" checked class="rounded border-slate-300 text-brand-500 focus:ring-brand-500">
+        <label for="var_tax_included" class="text-xs text-slate-600">IVA incluido en el monto</label>
       </div>
       <div>
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Notas</label>
@@ -100,4 +106,16 @@
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function checkAutoCategory() {
+  const sel = document.getElementById('var_category');
+  const warn = document.getElementById('auto_warning');
+  if (!sel || !warn) return;
+  const opt = sel.options[sel.selectedIndex];
+  warn.classList.toggle('hidden', !opt.dataset.auto);
+}
+</script>
 {% endblock %}

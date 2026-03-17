@@ -1,6 +1,8 @@
 """
-models.py — Tablas SQL (CREATE TABLE statements)
-Mapean directamente a las hojas de Google Sheets.
+models.py — Tablas SQL v2 (CREATE TABLE statements)
+v2: Agrega order_refunds, campos current_* en orders, line_item_id en order_lines,
+    costo_envio_estimado/timezone en stores, impacts_pnl en invoices,
+    tax_included en costos.
 """
 from app.database import executescript, query_one, execute
 
@@ -18,6 +20,8 @@ CREATE TABLE IF NOT EXISTS stores (
     comision_shopify    REAL NOT NULL DEFAULT 0.01,
     fulfillment_cost    REAL NOT NULL DEFAULT 1000,
     costo_envio_gratis  REAL NOT NULL DEFAULT 4500,
+    costo_envio_estimado REAL NOT NULL DEFAULT 0,
+    timezone            TEXT NOT NULL DEFAULT 'America/Santiago',
     target_mer          REAL NOT NULL DEFAULT 3.0,
     target_margen       REAL NOT NULL DEFAULT 0.40,
     target_utilidad     REAL NOT NULL DEFAULT 0.20,
@@ -46,6 +50,9 @@ CREATE TABLE IF NOT EXISTS orders (
     total_discounts     REAL NOT NULL DEFAULT 0,
     total_tax           REAL NOT NULL DEFAULT 0,
     total_shipping      REAL NOT NULL DEFAULT 0,
+    current_subtotal_price REAL NOT NULL DEFAULT 0,
+    current_total_price REAL NOT NULL DEFAULT 0,
+    has_shipping        INTEGER NOT NULL DEFAULT 1,
     currency            TEXT NOT NULL DEFAULT '',
     source_name         TEXT NOT NULL DEFAULT '',
     tags                TEXT NOT NULL DEFAULT '',
@@ -61,6 +68,7 @@ CREATE TABLE IF NOT EXISTS order_lines (
     store_id            TEXT NOT NULL,
     periodo             TEXT NOT NULL,
     financial_status    TEXT NOT NULL DEFAULT '',
+    line_item_id        TEXT NOT NULL DEFAULT '',
     item_name           TEXT NOT NULL DEFAULT '',
     item_sku            TEXT NOT NULL DEFAULT '',
     quantity            INTEGER NOT NULL DEFAULT 0,
@@ -103,6 +111,24 @@ CREATE TABLE IF NOT EXISTS product_costs (
     FOREIGN KEY (store_id) REFERENCES stores(id)
 );
 
+-- ── order_refunds (v2: devoluciones reales por linea) ─────────
+CREATE TABLE IF NOT EXISTS order_refunds (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    refund_id           TEXT NOT NULL,
+    order_id            TEXT NOT NULL,
+    store_id            TEXT NOT NULL,
+    created_at          TEXT NOT NULL DEFAULT '',
+    periodo             TEXT NOT NULL DEFAULT '',
+    line_item_id        TEXT NOT NULL DEFAULT '',
+    item_sku            TEXT NOT NULL DEFAULT '',
+    item_name           TEXT NOT NULL DEFAULT '',
+    quantity            INTEGER NOT NULL DEFAULT 0,
+    subtotal            REAL NOT NULL DEFAULT 0,
+    UNIQUE(refund_id, line_item_id, store_id),
+    FOREIGN KEY (store_id) REFERENCES stores(id)
+);
+CREATE INDEX IF NOT EXISTS idx_order_refunds_periodo ON order_refunds(store_id, periodo);
+
 -- ── fixed_costs (reemplaza GASTOS_FIJOS) ───────────────────────
 CREATE TABLE IF NOT EXISTS fixed_costs (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,6 +138,7 @@ CREATE TABLE IF NOT EXISTS fixed_costs (
     description         TEXT NOT NULL DEFAULT '',
     amount              REAL NOT NULL DEFAULT 0,
     recurring           INTEGER NOT NULL DEFAULT 0,
+    tax_included        INTEGER NOT NULL DEFAULT 1,
     notes               TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (store_id) REFERENCES stores(id)
 );
@@ -125,6 +152,7 @@ CREATE TABLE IF NOT EXISTS variable_costs (
     category            TEXT NOT NULL DEFAULT '',
     description         TEXT NOT NULL DEFAULT '',
     amount              REAL NOT NULL DEFAULT 0,
+    tax_included        INTEGER NOT NULL DEFAULT 1,
     notes               TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (store_id) REFERENCES stores(id)
 );
@@ -141,6 +169,8 @@ CREATE TABLE IF NOT EXISTS purchase_invoices (
     iva                 REAL NOT NULL DEFAULT 0,
     total_amount        REAL NOT NULL DEFAULT 0,
     invoice_number      TEXT NOT NULL DEFAULT '',
+    impacts_pnl         INTEGER NOT NULL DEFAULT 0,
+    pnl_category        TEXT NOT NULL DEFAULT '',
     notes               TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (store_id) REFERENCES stores(id)
 );
@@ -222,9 +252,36 @@ def seed_stores():
             print(f"  Store '{s['id']}' creada (token: {s['api_token']})")
 
 
+def migrate_db():
+    """Migraciones v2/v2.1. Safe to re-run (ignora si columna ya existe)."""
+    from app.database import get_db
+
+    migrations = [
+        # v2
+        "ALTER TABLE orders ADD COLUMN current_subtotal_price REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE orders ADD COLUMN current_total_price REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE order_lines ADD COLUMN line_item_id TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE stores ADD COLUMN costo_envio_estimado REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE stores ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/Santiago'",
+        "ALTER TABLE purchase_invoices ADD COLUMN impacts_pnl INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE purchase_invoices ADD COLUMN pnl_category TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE fixed_costs ADD COLUMN tax_included INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE variable_costs ADD COLUMN tax_included INTEGER NOT NULL DEFAULT 1",
+        # v2.1
+        "ALTER TABLE orders ADD COLUMN has_shipping INTEGER NOT NULL DEFAULT 1",
+    ]
+    with get_db() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(sql)
+            except Exception:
+                pass  # Column already exists
+
+
 def init_db():
-    """Inicializa la base de datos: crea tablas y seed."""
-    print("Inicializando base de datos...")
+    """Inicializa la base de datos: crea tablas, migra y seed."""
+    print("Inicializando base de datos v2...")
     create_tables()
+    migrate_db()
     seed_stores()
     print("Base de datos lista.")

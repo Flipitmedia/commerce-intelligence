@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Facturas — {{ store.name }}{% endblock %}
 {% block page_title %}Facturas de Compra{% endblock %}
-{% block page_subtitle %}Registro de facturas para credito fiscal IVA{% endblock %}
+{% block page_subtitle %}Registro de facturas de compra — credito fiscal IVA y gastos P&L{% endblock %}
 {% block page_actions %}
 <button onclick="document.getElementById('addModal').classList.remove('hidden')"
         class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 transition-colors">
@@ -107,6 +107,21 @@
           <input type="number" step="1" name="total_amount" id="total_amount" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" required>
         </div>
       </div>
+      <div class="bg-slate-50 rounded-lg p-4 space-y-3">
+        <div class="flex items-center gap-2">
+          <input type="checkbox" name="impacts_pnl" id="impacts_pnl" value="1" class="rounded border-slate-300 text-brand-500 focus:ring-brand-500" onchange="togglePnlCategory(this.checked)">
+          <label for="impacts_pnl" class="text-xs text-slate-600">Impacta el P&L (el monto neto se suma como gasto)</label>
+        </div>
+        <div id="pnl_cat_wrap" class="hidden">
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Categoria P&L</label>
+          <select name="pnl_category" id="pnl_category" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
+            <option value="">-- Seleccionar --</option>
+            <option value="cogs">Costo de productos</option>
+            <option value="fixed">Gasto fijo</option>
+            <option value="variable">Gasto variable</option>
+          </select>
+        </div>
+      </div>
       <div>
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Notas</label>
         <input type="text" name="notes" class="block w-full rounded-lg border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
@@ -127,6 +142,13 @@ function calcIVA() {
   const iva = Math.round(neto * {{ store.tax_rate }});
   document.getElementById('iva').value = iva;
   document.getElementById('total_amount').value = neto + iva;
+}
+function togglePnlCategory(checked) {
+  const wrap = document.getElementById('pnl_cat_wrap');
+  const sel = document.getElementById('pnl_category');
+  wrap.classList.toggle('hidden', !checked);
+  sel.required = checked;
+  if (!checked) sel.value = '';
 }
 </script>
 {% endblock %}
