@@ -555,9 +555,12 @@ def sync_shopify_only(store_id: str, token: str = ""):
     if store["shopify_domain"] and store["shopify_client_id"]:
         try:
             from app.sync_shopify import sync_shopify_periodo
-            return {"status": "ok", "periodo": store["periodo_activo"], "shopify": sync_shopify_periodo(store)}
+            result = sync_shopify_periodo(store)
+            return {"status": "ok", "periodo": store["periodo_activo"], "shopify": result}
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            import traceback
+            traceback.print_exc()
+            return {"status": "ok", "shopify": {"error": True, "message": str(e)}}
     return {"status": "skipped", "reason": "No Shopify credentials"}
 
 

@@ -185,12 +185,17 @@ async function runSync(type) {
       const metaResult = data.results?.meta || data.meta;
 
       if (shopifyResult && !shopifyResult.skipped) {
-        summary.push(`Shopify: ${shopifyResult.orders || 0} ordenes`);
-        if (shopifyResult.warning) warnings.push(shopifyResult.warning);
-        // Show debug details if 0 orders
-        if ((shopifyResult.orders || 0) === 0 && shopifyResult.debug) {
-          const d = shopifyResult.debug;
-          warnings.push(`Debug: fetched_created=${d.fetched_created}, fetched_updated=${d.fetched_updated}, total_merged=${d.total_merged}, matched=${d.matched_periodo}, timezone=${d.store_timezone}, periodos=${JSON.stringify(d.periodos_found)}`);
+        if (shopifyResult.error) {
+          summary.push(`Shopify: ERROR`);
+          warnings.push(`Error Shopify: ${shopifyResult.message || 'desconocido'}`);
+        } else {
+          summary.push(`Shopify: ${shopifyResult.orders || 0} ordenes`);
+          if (shopifyResult.warning) warnings.push(shopifyResult.warning);
+          // Show debug details if 0 orders
+          if ((shopifyResult.orders || 0) === 0 && shopifyResult.debug) {
+            const d = shopifyResult.debug;
+            warnings.push(`Debug: fetched_created=${d.fetched_created}, fetched_updated=${d.fetched_updated}, total_merged=${d.total_merged}, matched=${d.matched_periodo}, timezone=${d.store_timezone}, periodos=${JSON.stringify(d.periodos_found)}`);
+          }
         }
       }
       if (metaResult && !metaResult.skipped) {
