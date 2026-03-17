@@ -22,15 +22,13 @@
 
     {% if store.shopify_domain and store.shopify_client_id %}
     <div class="space-y-3">
-      <form method="POST" action="/admin/{{ store.id }}/sync/shopify?token={{ token }}">
-        <button type="submit" class="btn btn-primary w-full justify-center" id="syncShopifyBtn"
-                onclick="this.disabled=true;this.innerHTML='<span class=\'material-symbols-outlined text-base animate-spin\'>sync</span> Sincronizando...'">
+      <form method="POST" action="/admin/{{ store.id }}/sync/shopify?token={{ token }}" onsubmit="syncStarted(this)">
+        <button type="submit" class="btn btn-primary w-full justify-center">
           <span class="material-symbols-outlined text-base">sync</span> Sync Periodo Activo
         </button>
       </form>
-      <form method="POST" action="/admin/{{ store.id }}/sync/shopify-full?token={{ token }}">
-        <button type="submit" class="btn btn-secondary w-full justify-center"
-                onclick="this.disabled=true;this.textContent='Sincronizando 12 meses...'">
+      <form method="POST" action="/admin/{{ store.id }}/sync/shopify-full?token={{ token }}" onsubmit="syncStarted(this)">
+        <button type="submit" class="btn btn-secondary w-full justify-center">
           <span class="material-symbols-outlined text-base">history</span> Sync Completo (12 meses)
         </button>
       </form>
@@ -54,15 +52,13 @@
 
     {% if store.meta_access_token and store.meta_ad_account_id %}
     <div class="space-y-3">
-      <form method="POST" action="/admin/{{ store.id }}/sync/meta?token={{ token }}">
-        <button type="submit" class="btn btn-primary w-full justify-center"
-                onclick="this.disabled=true;this.innerHTML='<span class=\'material-symbols-outlined text-base animate-spin\'>sync</span> Sincronizando...'">
+      <form method="POST" action="/admin/{{ store.id }}/sync/meta?token={{ token }}" onsubmit="syncStarted(this)">
+        <button type="submit" class="btn btn-primary w-full justify-center">
           <span class="material-symbols-outlined text-base">sync</span> Sync Periodo Activo
         </button>
       </form>
-      <form method="POST" action="/admin/{{ store.id }}/sync/meta-full?token={{ token }}">
-        <button type="submit" class="btn btn-secondary w-full justify-center"
-                onclick="this.disabled=true;this.textContent='Sincronizando 12 meses...'">
+      <form method="POST" action="/admin/{{ store.id }}/sync/meta-full?token={{ token }}" onsubmit="syncStarted(this)">
+        <button type="submit" class="btn btn-secondary w-full justify-center">
           <span class="material-symbols-outlined text-base">history</span> Sync Completo (12 meses)
         </button>
       </form>
@@ -73,9 +69,28 @@
   </div>
 </div>
 
+<!-- Sync All button -->
+<div class="card mt-6">
+  <form method="POST" action="/admin/{{ store.id }}/sync/all?token={{ token }}" onsubmit="syncStarted(this)">
+    <button type="submit" class="btn btn-primary w-full justify-center text-lg py-3">
+      <span class="material-symbols-outlined text-xl">sync</span> Sync Todo (Shopify + Meta)
+    </button>
+  </form>
+</div>
+
+<!-- Loading overlay -->
+<div id="syncOverlay" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-2xl p-8 shadow-xl text-center max-w-sm mx-4">
+    <div class="animate-spin w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full mx-auto mb-4"></div>
+    <h3 class="text-lg font-semibold text-gray-900 mb-1">Sincronizando...</h3>
+    <p class="text-sm text-gray-500">Esto puede tomar 30-60 segundos.<br>No cierres esta pagina.</p>
+    <p class="text-xs text-gray-400 mt-3" id="syncTimer">0s</p>
+  </div>
+</div>
+
 {% if result %}
 <div class="card mt-6">
-  <h3 class="text-lg font-semibold mb-2">Resultado</h3>
+  <h3 class="text-lg font-semibold mb-2 text-green-700">✓ Resultado</h3>
   <pre class="bg-gray-50 rounded-lg p-4 text-sm font-mono text-gray-700 overflow-x-auto">{{ result | tojson(indent=2) }}</pre>
 </div>
 {% endif %}
@@ -108,4 +123,19 @@
     </div>
   </div>
 </div>
+
+<script>
+let timerInterval;
+function syncStarted(form) {
+  const overlay = document.getElementById('syncOverlay');
+  const timer = document.getElementById('syncTimer');
+  overlay.classList.remove('hidden');
+  let seconds = 0;
+  timerInterval = setInterval(() => {
+    seconds++;
+    timer.textContent = seconds + 's';
+  }, 1000);
+  // Form submits normally — the page will reload with results
+}
+</script>
 {% endblock %}

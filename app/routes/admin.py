@@ -324,3 +324,31 @@ def admin_sync_meta_full(request: Request, store_id: str, token: str = ""):
         "active_page": "sync", "stats": get_db_stats(store_id),
         "result": {"meta_full": result}, "error": None,
     })
+
+
+@router.post("/{store_id}/sync/all", response_class=HTMLResponse)
+def admin_sync_all(request: Request, store_id: str, token: str = ""):
+    """Sync Shopify + Meta periodo activo en un solo click."""
+    store = get_store(store_id, token)
+    result = {}
+    error = None
+    try:
+        if store["shopify_domain"] and store["shopify_client_id"]:
+            from app.sync_shopify import sync_shopify_periodo
+            result["shopify"] = sync_shopify_periodo(store)
+        else:
+            result["shopify"] = {"skipped": True, "reason": "No Shopify credentials"}
+
+        if store["meta_access_token"] and store["meta_ad_account_id"]:
+            from app.sync_meta import sync_meta_periodo
+            result["meta"] = sync_meta_periodo(store)
+        else:
+            result["meta"] = {"skipped": True, "reason": "No Meta credentials"}
+    except Exception as e:
+        error = str(e)
+
+    return templates.TemplateResponse("sync.html", {
+        "request": request, "store": store, "token": token,
+        "active_page": "sync", "stats": get_db_stats(store_id),
+        "result": result if not error else None, "error": error,
+    })
