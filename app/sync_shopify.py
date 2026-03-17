@@ -307,6 +307,35 @@ def sync_shopify_periodo(store: dict, periodo: str | None = None) -> dict:
             updated_lines.extend(lines)
             updated_refunds.extend(refunds)
 
+    # Safety check: no borrar datos existentes si API retorna 0 ordenes
+    existing_count = 0
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) as c FROM orders WHERE store_id = ? AND periodo = ?",
+            (store["id"], periodo),
+        ).fetchone()
+        existing_count = row[0] if row else 0
+
+    if len(order_rows) == 0 and existing_count > 0:
+        print(f"  ⚠ SAFETY: API retorno 0 ordenes pero hay {existing_count} en DB para {periodo}. NO se borran datos.")
+        return {
+            "orders": 0,
+            "lines": 0,
+            "refunds": 0,
+            "updated_from_other_periods": len(updated_orders),
+            "warning": f"Shopify API retorno 0 ordenes para {periodo} pero hay {existing_count} en DB. Datos preservados. Verifica credenciales con el diagnostico.",
+            "debug": {
+                "domain": store["shopify_domain"],
+                "periodo": periodo,
+                "date_range": f"{since} → {until}",
+                "fetched_created": len(orders_created),
+                "fetched_updated": len(orders_updated),
+                "token_type": "direct" if token.startswith("shpat_") else "oauth",
+                "existing_in_db": existing_count,
+                "safety_triggered": True,
+            },
+        }
+
     # Escribir en DB
     with get_db() as conn:
         # 1. Reemplazo atomico del periodo target (comportamiento original)
@@ -449,6 +478,19 @@ def sync_shopify_full(store: dict) -> dict:
             order_rows.append(od)
             line_rows.extend(lines)
             refund_rows.extend(refunds)
+
+        # Safety check: no borrar si API retorna 0 pero hay datos
+        if len(order_rows) == 0:
+            with get_db() as conn:
+                row = conn.execute(
+                    "SELECT COUNT(*) as c FROM orders WHERE store_id = ? AND periodo = ?",
+                    (store["id"], periodo),
+                ).fetchone()
+                existing = row[0] if row else 0
+            if existing > 0:
+                print(f"  ⚠ SAFETY {periodo}: API retorno 0 ordenes, {existing} en DB. Preservando datos.")
+                time.sleep(1)
+                continue
 
         with get_db() as conn:
             conn.execute(

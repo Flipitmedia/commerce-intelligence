@@ -45,6 +45,9 @@
         <button onclick="runSync('shopify-full')" class="sync-btn flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
           <span class="material-symbols-outlined text-[16px]">history</span> Completo (12 meses)
         </button>
+        <button onclick="runDiagnostic()" class="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg border border-amber-200 text-sm text-amber-700 hover:bg-amber-50 transition-colors">
+          <span class="material-symbols-outlined text-[16px]">troubleshoot</span> Diagnostico
+        </button>
         {% else %}
         <p class="text-xs text-slate-400 py-2">Configura las credenciales en la seccion General.</p>
         {% endif %}
@@ -177,30 +180,42 @@ async function runSync(type) {
     if (resp.ok) {
       // Build a clean summary
       let summary = [];
-      if (data.results) {
-        if (data.results.shopify && !data.results.shopify.skipped) {
-          summary.push(`Shopify: ${data.results.shopify.orders || 0} ordenes`);
-        }
-        if (data.results.meta && !data.results.meta.skipped) {
-          summary.push(`Meta: ${data.results.meta.rows || 0} campanas`);
-        }
-      } else if (data.shopify) {
-        summary.push(`Shopify: ${data.shopify.orders || 0} ordenes`);
-      } else if (data.meta) {
-        summary.push(`Meta: ${data.meta.rows || 0} campanas`);
+      let warnings = [];
+      const shopifyResult = data.results?.shopify || data.shopify;
+      const metaResult = data.results?.meta || data.meta;
+
+      if (shopifyResult && !shopifyResult.skipped) {
+        summary.push(`Shopify: ${shopifyResult.orders || 0} ordenes`);
+        if (shopifyResult.warning) warnings.push(shopifyResult.warning);
+      }
+      if (metaResult && !metaResult.skipped) {
+        summary.push(`Meta: ${metaResult.rows || 0} campanas`);
+        if (metaResult.warning) warnings.push(metaResult.warning);
+      }
+
+      let warningHtml = '';
+      if (warnings.length > 0) {
+        warningHtml = `
+          <div class="px-5 py-3 bg-amber-50 border-t border-amber-200">
+            <p class="text-xs text-amber-700 flex items-start gap-2">
+              <span class="material-symbols-outlined text-sm mt-0.5">warning</span>
+              ${warnings.join('<br>')}
+            </p>
+          </div>`;
       }
 
       resultArea.innerHTML = `
-        <div class="bg-white rounded-xl border border-emerald-200 overflow-hidden">
-          <div class="px-5 py-4 bg-emerald-50/50 flex items-center gap-3">
-            <span class="material-symbols-outlined text-emerald-600" style="font-variation-settings: 'FILL' 1">check_circle</span>
+        <div class="bg-white rounded-xl border ${warnings.length ? 'border-amber-200' : 'border-emerald-200'} overflow-hidden">
+          <div class="px-5 py-4 ${warnings.length ? 'bg-amber-50/50' : 'bg-emerald-50/50'} flex items-center gap-3">
+            <span class="material-symbols-outlined ${warnings.length ? 'text-amber-500' : 'text-emerald-600'}" style="font-variation-settings: 'FILL' 1">${warnings.length ? 'warning' : 'check_circle'}</span>
             <div>
-              <p class="text-sm font-medium text-emerald-800">Sync completado en ${seconds}s</p>
-              <p class="text-xs text-emerald-600 mt-0.5">${summary.join(' · ') || 'Sin datos nuevos'}</p>
+              <p class="text-sm font-medium ${warnings.length ? 'text-amber-800' : 'text-emerald-800'}">Sync completado en ${seconds}s</p>
+              <p class="text-xs ${warnings.length ? 'text-amber-600' : 'text-emerald-600'} mt-0.5">${summary.join(' · ') || 'Sin datos nuevos'}</p>
             </div>
           </div>
+          ${warningHtml}
         </div>`;
-      showToast('Sync completado');
+      showToast(warnings.length ? 'Sync con advertencias' : 'Sync completado', warnings.length ? 'error' : 'success');
     } else {
       const errMsg = data.detail || JSON.stringify(data);
       resultArea.innerHTML = `
@@ -238,6 +253,84 @@ async function runSync(type) {
     b.disabled = false;
     b.classList.remove('syncing');
   });
+}
+
+async function runDiagnostic() {
+  const resultArea = document.getElementById('resultArea');
+  resultArea.innerHTML = `
+    <div class="bg-white rounded-xl border border-amber-200 overflow-hidden">
+      <div class="px-5 py-4 bg-amber-50/50 flex items-center gap-3">
+        <div class="w-5 h-5 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"></div>
+        <p class="text-sm text-amber-700">Ejecutando diagnostico Shopify...</p>
+      </div>
+    </div>`;
+
+  try {
+    const resp = await fetch(`/api/${STORE_ID}/debug/shopify?token=${TOKEN}`);
+    const d = await resp.json();
+
+    let html = `<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+        <h3 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <span class="material-symbols-outlined text-base text-amber-500">troubleshoot</span>
+          Diagnostico Shopify
+        </h3>
+      </div>
+      <div class="px-5 py-4 space-y-3 text-sm">`;
+
+    const row = (label, value, ok) => `
+      <div class="flex items-center justify-between py-1.5 border-b border-slate-50">
+        <span class="text-slate-500">${label}</span>
+        <span class="font-mono text-xs ${ok === true ? 'text-emerald-600' : ok === false ? 'text-red-600' : 'text-slate-700'}">${value}</span>
+      </div>`;
+
+    html += row('Dominio', d.shopify_domain || '—', !!d.shopify_domain);
+    html += row('Client ID', d.has_client_id ? '✓ configurado' : '✗ falta', d.has_client_id);
+    html += row('Client Secret', d.has_client_secret ? '✓ configurado' : '✗ falta', d.has_client_secret);
+    html += row('API Version', d.api_version || '—');
+    html += row('Tipo de token', d.token_type || '—');
+    html += row('Token preview', d.token_preview || '—');
+    html += row('Auth OK', d.auth_ok ? '✓' : '✗', d.auth_ok);
+    html += row('HTTP Status API', d.raw_response_status || '—', d.raw_response_status === 200);
+
+    if (d.total_orders_in_shopify !== undefined) {
+      html += row('Total ordenes en Shopify', d.total_orders_in_shopify, d.total_orders_in_shopify > 0);
+    }
+
+    if (d.orders_test) {
+      html += row('Periodo testeado', d.orders_test.periodo);
+      html += row('Rango fechas', d.orders_test.date_range);
+      html += row('Ordenes encontradas', d.orders_test.count_returned, d.orders_test.count_returned > 0);
+      if (d.orders_test.first_order) {
+        html += row('Primera orden ID', d.orders_test.first_order.id);
+        html += row('Fecha creacion', d.orders_test.first_order.created_at);
+        html += row('Estado financiero', d.orders_test.first_order.financial_status);
+        html += row('Total price', d.orders_test.first_order.total_price);
+        html += row('Current total', d.orders_test.first_order.current_total_price);
+      }
+    }
+
+    if (d.error) {
+      html += `<div class="mt-3 px-3 py-2 rounded-lg bg-red-50 text-red-700 text-xs">${d.error}</div>`;
+    }
+    if (d.raw_response_body) {
+      html += `<div class="mt-3 px-3 py-2 rounded-lg bg-slate-100 text-xs font-mono text-slate-600 overflow-x-auto">${d.raw_response_body}</div>`;
+    }
+    if (d.orders_count_error) {
+      html += `<div class="mt-3 px-3 py-2 rounded-lg bg-amber-50 text-amber-700 text-xs">Count error: ${d.orders_count_error}</div>`;
+    }
+
+    html += '</div></div>';
+    resultArea.innerHTML = html;
+  } catch(e) {
+    resultArea.innerHTML = `
+      <div class="bg-white rounded-xl border border-red-200 overflow-hidden">
+        <div class="px-5 py-4 bg-red-50/50 flex items-center gap-3">
+          <span class="material-symbols-outlined text-red-500">error</span>
+          <p class="text-sm text-red-700">Error: ${e.message}</p>
+        </div>
+      </div>`;
+  }
 }
 
 async function refreshStats() {

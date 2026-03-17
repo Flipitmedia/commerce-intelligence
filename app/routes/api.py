@@ -189,6 +189,103 @@ def debug_data(store_id: str, token: str = ""):
     }
 
 
+@router.get("/{store_id}/debug/shopify")
+def debug_shopify(store_id: str, token: str = ""):
+    """
+    Diagnostico Shopify: prueba conexion, muestra token, API version,
+    y trae 1 orden para verificar que la API responde correctamente.
+    """
+    import httpx
+    store = get_store_or_404(store_id, token)
+
+    diag = {
+        "store_id": store_id,
+        "shopify_domain": store.get("shopify_domain", ""),
+        "has_client_id": bool(store.get("shopify_client_id")),
+        "has_client_secret": bool(store.get("shopify_client_secret")),
+        "api_version": None,
+        "token_type": None,
+        "token_preview": None,
+        "auth_ok": False,
+        "orders_test": None,
+        "raw_response_status": None,
+        "raw_response_body": None,
+        "error": None,
+    }
+
+    if not store.get("shopify_domain") or not store.get("shopify_client_id"):
+        diag["error"] = "Faltan credenciales Shopify (domain o client_id)"
+        return diag
+
+    # Step 1: get token
+    try:
+        from app.sync_shopify import get_shopify_token, SHOPIFY_API_VERSION
+        access_token = get_shopify_token(store)
+        diag["api_version"] = SHOPIFY_API_VERSION
+        diag["token_type"] = "direct (shpat_)" if access_token.startswith("shpat_") else "oauth (client_credentials)"
+        diag["token_preview"] = access_token[:8] + "..." + access_token[-4:] if len(access_token) > 12 else "***"
+        diag["auth_ok"] = True
+    except Exception as e:
+        diag["error"] = f"Error obteniendo token: {e}"
+        return diag
+
+    # Step 2: fetch 1 order to test
+    domain = store["shopify_domain"]
+    try:
+        from app.sync_shopify import period_to_date_range
+        since, until = period_to_date_range(store["periodo_activo"])
+
+        url = f"https://{domain}/admin/api/{SHOPIFY_API_VERSION}/orders.json"
+        params = {
+            "status": "any",
+            "created_at_min": since,
+            "created_at_max": until,
+            "limit": 3,
+        }
+
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(url, params=params, headers={"X-Shopify-Access-Token": access_token})
+
+        diag["raw_response_status"] = resp.status_code
+
+        if resp.status_code == 200:
+            data = resp.json()
+            orders = data.get("orders", [])
+            diag["orders_test"] = {
+                "periodo": store["periodo_activo"],
+                "date_range": f"{since} → {until}",
+                "count_returned": len(orders),
+                "first_order": {
+                    "id": orders[0]["id"],
+                    "created_at": orders[0].get("created_at"),
+                    "financial_status": orders[0].get("financial_status"),
+                    "total_price": orders[0].get("total_price"),
+                    "current_total_price": orders[0].get("current_total_price"),
+                } if orders else None,
+            }
+        else:
+            diag["raw_response_body"] = resp.text[:500]
+            diag["error"] = f"Shopify API respondio HTTP {resp.status_code}"
+
+        # Step 3: also test with no date filter (just get any recent order)
+        resp2 = None
+        with httpx.Client(timeout=30) as client:
+            resp2 = client.get(
+                f"https://{domain}/admin/api/{SHOPIFY_API_VERSION}/orders/count.json",
+                params={"status": "any"},
+                headers={"X-Shopify-Access-Token": access_token},
+            )
+        if resp2 and resp2.status_code == 200:
+            diag["total_orders_in_shopify"] = resp2.json().get("count", "?")
+        else:
+            diag["orders_count_error"] = resp2.text[:200] if resp2 else "no response"
+
+    except Exception as e:
+        diag["error"] = f"Error consultando API: {e}"
+
+    return diag
+
+
 @router.get("/{store_id}/data")
 def get_data(store_id: str, token: str = ""):
     """JSON completo — mismo contrato que doGet de WebApp.gs."""
