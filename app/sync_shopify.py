@@ -510,9 +510,10 @@ def sync_shopify_full(store: dict) -> dict:
     token = get_shopify_token(store)
     store_tz = store.get("timezone", "America/Santiago")
 
+    all_debug = {}
     for periodo in periodos:
         since, until = period_to_date_range(periodo)
-        print(f"  Fetch Shopify: {periodo}")
+        print(f"  Fetch Shopify: {periodo} ({since} → {until})")
 
         orders = shopify_fetch_all(store["shopify_domain"], token, "orders.json", {
             "status": "any",
@@ -524,13 +525,23 @@ def sync_shopify_full(store: dict) -> dict:
         order_rows = []
         line_rows = []
         refund_rows = []
+        periodos_found = {}
         for order in orders:
             od, lines, refunds = extract_order_data(order, store["id"], store_tz)
+            periodos_found[od["periodo"]] = periodos_found.get(od["periodo"], 0) + 1
             if od["periodo"] != periodo:
                 continue  # orden de un dia buffer
             order_rows.append(od)
             line_rows.extend(lines)
             refund_rows.extend(refunds)
+
+        print(f"  {periodo}: API={len(orders)}, matched={len(order_rows)}, periodos_found={periodos_found}")
+        if orders and not order_rows:
+            # Log first order details for debugging
+            sample = orders[0]
+            print(f"  ⚠ MISMATCH {periodo}: first order created_at={sample.get('created_at')}, "
+                  f"store_tz={store_tz}")
+        all_debug[periodo] = {"api": len(orders), "matched": len(order_rows), "periodos": periodos_found}
 
         # Safety check: no borrar si API retorna 0 pero hay datos
         if len(order_rows) == 0:
@@ -589,4 +600,14 @@ def sync_shopify_full(store: dict) -> dict:
         time.sleep(1)
 
     print(f"  Full sync: {total_orders} orders, {total_lines} lines, {total_refunds} refunds ({len(periodos)} meses)")
-    return {"orders": total_orders, "lines": total_lines, "refunds": total_refunds, "months": len(periodos)}
+    return {
+        "orders": total_orders,
+        "lines": total_lines,
+        "refunds": total_refunds,
+        "months": len(periodos),
+        "debug": {
+            "token_type": "direct" if token.startswith("shpat_") else "oauth",
+            "store_timezone": store_tz,
+            "periods_detail": all_debug,
+        },
+    }
