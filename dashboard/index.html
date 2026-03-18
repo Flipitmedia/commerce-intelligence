@@ -826,7 +826,11 @@
   <!-- ═══════════ FOOTER ═══════════ -->
   <footer class="text-center py-6 text-xs text-[var(--ci-text-muted)] border-t border-[var(--ci-border)]">
     <!-- Mobile action buttons (solo < sm) -->
-    <div class="sm:hidden flex items-center justify-center gap-3 mb-4">
+    <div class="sm:hidden flex items-center justify-center gap-3 mb-4 flex-wrap">
+      <button onclick="syncAndReload()" id="syncBtnMobile" class="flex items-center gap-2 rounded-full border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] px-4 py-2 text-xs font-semibold text-[var(--ci-text-light)] shadow-card transition active:scale-95 disabled:opacity-50" title="Actualizar datos">
+        <span class="material-symbols-outlined text-[16px] text-ci-primary" id="syncIconMobile">sync</span>
+        <span id="syncLabelMobile">Actualizar datos</span>
+      </button>
       <button onclick="copyDashboardLink()" id="copyLinkBtnMobile" class="flex items-center gap-2 rounded-full border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] px-4 py-2 text-xs font-semibold text-[var(--ci-text-light)] shadow-card transition active:scale-95" title="Copiar enlace">
         <span class="material-symbols-outlined text-[16px] text-ci-primary">link</span>
         <span id="copyLinkLabelMobile">Copiar enlace</span>
@@ -945,12 +949,13 @@
     async function syncAndReload() {
       const syncUrl = getSyncUrl();
       if (!syncUrl) return;
-      const btn = document.getElementById('syncBtn');
-      const icon = document.getElementById('syncIcon');
-      const label = document.getElementById('syncLabel');
-      btn.disabled = true;
-      icon.style.animation = 'spin 1s linear infinite';
-      label.textContent = 'Sincronizando...';
+      // Update both desktop and mobile buttons
+      const btns = [document.getElementById('syncBtn'), document.getElementById('syncBtnMobile')].filter(Boolean);
+      const icons = [document.getElementById('syncIcon'), document.getElementById('syncIconMobile')].filter(Boolean);
+      const labels = [document.getElementById('syncLabel'), document.getElementById('syncLabelMobile')].filter(Boolean);
+      btns.forEach(b => b.disabled = true);
+      icons.forEach(i => i.style.animation = 'spin 1s linear infinite');
+      labels.forEach(l => l.textContent = 'Sincronizando...');
       try {
         const resp = await fetch(syncUrl, { method: 'POST' });
         const data = await resp.json();
@@ -962,14 +967,15 @@
           else { msg.push(`${shopify.orders || 0} ordenes`); }
         }
         if (meta) { msg.push(`${meta.rows || 0} campanas`); }
-        label.textContent = msg.join(', ') || 'Listo';
+        const resultText = msg.join(', ') || 'Listo';
+        labels.forEach(l => l.textContent = resultText);
         await loadData();
       } catch (e) {
-        label.textContent = 'Error de sync';
+        labels.forEach(l => l.textContent = 'Error de sync');
       }
-      icon.style.animation = '';
-      btn.disabled = false;
-      setTimeout(() => { label.textContent = 'Actualizar datos'; }, 4000);
+      icons.forEach(i => i.style.animation = '');
+      btns.forEach(b => b.disabled = false);
+      setTimeout(() => { labels.forEach(l => l.textContent = 'Actualizar datos'); }, 4000);
     }
 
     // Resolve slug to actual WebApp URL if needed

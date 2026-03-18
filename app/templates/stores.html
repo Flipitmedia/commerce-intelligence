@@ -54,22 +54,22 @@
       {% if stores %}
       <div class="divide-y divide-slate-100">
         {% for s in stores %}
-        <div class="px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+        <div class="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-50/50 transition-colors">
           <div class="min-w-0">
             <p class="text-sm font-medium text-slate-900">{{ s.name }}</p>
-            <p class="text-xs text-slate-400 mt-0.5">
+            <p class="text-xs text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
               <code class="bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">{{ s.id }}</code>
               {% if s.shopify_domain %}
-                <span class="ml-2">{{ s.shopify_domain }}</span>
+                <span>{{ s.shopify_domain }}</span>
               {% else %}
-                <span class="ml-2 text-amber-500">Sin Shopify configurado</span>
+                <span class="text-amber-500">Sin Shopify configurado</span>
               {% endif %}
-              <span class="ml-2 text-slate-300">·</span>
-              <span class="ml-1">{{ s.periodo_activo }}</span>
+              <span class="text-slate-300">·</span>
+              <span>{{ s.periodo_activo }}</span>
             </p>
           </div>
 
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex items-center gap-2 shrink-0 flex-wrap">
             <!-- Token copy -->
             <button onclick="copyToken('{{ s.api_token }}')" title="Copiar token"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-100 transition-colors border border-slate-200">
