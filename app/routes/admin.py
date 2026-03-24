@@ -272,7 +272,7 @@ def export_fixed_costs(store_id: str, token: str = ""):
 
 
 @router.post("/{store_id}/fixed-costs/import")
-async def import_fixed_costs(store_id: str, token: str = "", request: Request = None):
+async def import_fixed_costs(request: Request, store_id: str, token: str = ""):
     get_store(store_id, token)
     data = await request.json()
     rows = data.get("rows", [])
@@ -364,7 +364,7 @@ def export_variable_costs(store_id: str, token: str = ""):
 
 
 @router.post("/{store_id}/variable-costs/import")
-async def import_variable_costs(store_id: str, token: str = "", request: Request = None):
+async def import_variable_costs(request: Request, store_id: str, token: str = ""):
     get_store(store_id, token)
     data = await request.json()
     rows = data.get("rows", [])
