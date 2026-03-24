@@ -3,6 +3,14 @@
 {% block page_title %}Costos de Productos{% endblock %}
 {% block page_subtitle %}Costo unitario por SKU para calculo de margen{% endblock %}
 {% block page_actions %}
+<a href="/admin/{{ store.id }}/costs/export.csv?token={{ token }}"
+   class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors">
+  <span class="material-symbols-outlined text-[16px]">download</span> Exportar CSV
+</a>
+<button onclick="document.getElementById('importModal').classList.remove('hidden')"
+        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors">
+  <span class="material-symbols-outlined text-[16px]">upload</span> Importar CSV
+</button>
 <button onclick="document.getElementById('addModal').classList.remove('hidden')"
         class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 transition-colors">
   <span class="material-symbols-outlined text-[16px]">add</span> Agregar
@@ -43,7 +51,11 @@
           <td colspan="5" class="px-5 py-12 text-center">
             <span class="material-symbols-outlined text-3xl text-slate-200 mb-2">inventory_2</span>
             <p class="text-sm text-slate-400">Sin costos registrados</p>
-            <p class="text-xs text-slate-300 mt-1">Agrega costos unitarios por producto para calcular margen</p>
+            <p class="text-xs text-slate-300 mt-1">
+              <a href="#" onclick="downloadTemplate(event)"
+                 class="text-brand-500 hover:underline">Descargar plantilla CSV</a>
+              o agrega costos manualmente
+            </p>
           </td>
         </tr>
         {% endfor %}
@@ -52,7 +64,62 @@
   </div>
 </div>
 
-<!-- Modal -->
+<!-- Import Modal -->
+<div id="importModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-slate-900">Importar Costos desde CSV</h3>
+      <button onclick="document.getElementById('importModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+    <div class="px-6 py-5 space-y-4">
+      <div class="bg-slate-50 rounded-lg p-4 text-xs text-slate-500 space-y-1">
+        <p class="font-medium text-slate-700">Formato esperado del CSV:</p>
+        <p><code class="bg-white px-1.5 py-0.5 rounded border border-slate-200">sku, product, unit_cost, notes</code></p>
+        <p>La primera fila debe ser el encabezado. <a href="#" onclick="downloadTemplate(event)" class="text-brand-500 hover:underline">Descargar plantilla</a></p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-2">Seleccionar archivo CSV</label>
+        <input type="file" accept=".csv" id="csvFileInput" onchange="previewCSV(this)"
+               class="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+      </div>
+      <div id="csvPreview" class="hidden">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs font-medium text-slate-600">Vista previa (<span id="previewCount">0</span> filas)</p>
+          <label class="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+            <input type="checkbox" id="replaceCheck" class="rounded border-slate-300 text-brand-500">
+            Reemplazar todos los costos existentes
+          </label>
+        </div>
+        <div class="overflow-auto max-h-52 rounded-lg border border-slate-200">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 sticky top-0">
+              <tr>
+                <th class="px-3 py-2 text-left text-slate-500 font-medium">SKU</th>
+                <th class="px-3 py-2 text-left text-slate-500 font-medium">Producto</th>
+                <th class="px-3 py-2 text-right text-slate-500 font-medium">Costo Unit.</th>
+                <th class="px-3 py-2 text-left text-slate-500 font-medium">Notas</th>
+              </tr>
+            </thead>
+            <tbody id="previewBody" class="divide-y divide-slate-50"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="importError" class="hidden bg-red-50 text-red-600 text-xs rounded-lg px-4 py-3"></div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+      <button onclick="document.getElementById('importModal').classList.add('hidden')"
+              class="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors">Cancelar</button>
+      <button id="importBtn" onclick="doImport()" disabled
+              class="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+        Importar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Modal -->
 <div id="addModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50" onclick="if(event.target===this)this.classList.add('hidden')">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
     <div class="px-6 py-4 border-b border-slate-100">
@@ -82,4 +149,88 @@
     </form>
   </div>
 </div>
+
+<script>
+let parsedRows = [];
+
+function downloadTemplate(e) {
+  e.preventDefault();
+  const csv = "sku,product,unit_cost,notes\nSKU-001,Producto Ejemplo,5000,\nSKU-002,Otro Producto,12000,Con IVA incluido\n";
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "plantilla_costos_productos.csv";
+  a.click();
+}
+
+function previewCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result.replace(/^\uFEFF/, "");
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return;
+    const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+    const idxSku = headers.indexOf("sku");
+    const idxProduct = headers.findIndex(h => h === "product" || h === "producto");
+    const idxCost = headers.findIndex(h => h === "unit_cost" || h === "costo_unit" || h === "costo");
+    const idxNotes = headers.findIndex(h => h === "notes" || h === "notas");
+    parsedRows = [];
+    const tbody = document.getElementById("previewBody");
+    tbody.innerHTML = "";
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",");
+      const row = {
+        sku: idxSku >= 0 ? (cols[idxSku] || "").trim() : "",
+        product: idxProduct >= 0 ? (cols[idxProduct] || "").trim() : "",
+        unit_cost: idxCost >= 0 ? parseFloat((cols[idxCost] || "0").trim()) || 0 : 0,
+        notes: idxNotes >= 0 ? (cols[idxNotes] || "").trim() : "",
+      };
+      if (!row.product && !row.sku) continue;
+      parsedRows.push(row);
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-slate-50";
+      tr.innerHTML = `<td class="px-3 py-1.5 font-mono text-slate-500">${row.sku || "—"}</td>
+        <td class="px-3 py-1.5 text-slate-900">${row.product}</td>
+        <td class="px-3 py-1.5 text-right font-mono">${row.unit_cost.toLocaleString("es-CL")}</td>
+        <td class="px-3 py-1.5 text-slate-400">${row.notes || ""}</td>`;
+      tbody.appendChild(tr);
+    }
+    document.getElementById("previewCount").textContent = parsedRows.length;
+    document.getElementById("csvPreview").classList.remove("hidden");
+    document.getElementById("importBtn").disabled = parsedRows.length === 0;
+    document.getElementById("importError").classList.add("hidden");
+  };
+  reader.readAsText(file, "UTF-8");
+}
+
+async function doImport() {
+  const btn = document.getElementById("importBtn");
+  btn.disabled = true;
+  btn.textContent = "Importando...";
+  const replace = document.getElementById("replaceCheck").checked;
+  try {
+    const resp = await fetch("/admin/{{ store.id }}/costs/import?token={{ token }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rows: parsedRows, replace }),
+    });
+    const data = await resp.json();
+    if (data.errors && data.errors.length > 0) {
+      document.getElementById("importError").textContent = data.errors.join(" · ");
+      document.getElementById("importError").classList.remove("hidden");
+    }
+    if (data.inserted > 0) {
+      document.getElementById("importModal").classList.add("hidden");
+      window.location.reload();
+    }
+  } catch(err) {
+    document.getElementById("importError").textContent = "Error al importar: " + err.message;
+    document.getElementById("importError").classList.remove("hidden");
+  }
+  btn.disabled = false;
+  btn.textContent = "Importar";
+}
+</script>
 {% endblock %}

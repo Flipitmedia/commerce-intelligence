@@ -196,6 +196,44 @@ def admin_costs_delete(store_id: str, item_id: int, token: str = ""):
     return RedirectResponse(f"/admin/{store_id}/costs?token={token}", status_code=303)
 
 
+@router.get("/{store_id}/costs/export.csv")
+def export_product_costs(store_id: str, token: str = ""):
+    get_store(store_id, token)
+    items = query("SELECT * FROM product_costs WHERE store_id = ? ORDER BY sku, product", (store_id,))
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["sku", "product", "unit_cost", "notes"])
+    for item in items:
+        w.writerow([item["sku"], item["product"], item["unit_cost"], item["notes"] or ""])
+    return StreamingResponse(
+        io.BytesIO(out.getvalue().encode("utf-8-sig")),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=costos_productos_{store_id}.csv"},
+    )
+
+
+@router.post("/{store_id}/costs/import")
+async def import_product_costs(request: Request, store_id: str, token: str = ""):
+    get_store(store_id, token)
+    data = await request.json()
+    rows = data.get("rows", [])
+    replace = data.get("replace", False)
+    if replace:
+        execute("DELETE FROM product_costs WHERE store_id = ?", (store_id,))
+    inserted, errors = 0, []
+    for i, row in enumerate(rows):
+        try:
+            execute(
+                "INSERT INTO product_costs (store_id, sku, product, unit_cost, notes) VALUES (?,?,?,?,?)",
+                (store_id, row.get("sku", ""), row.get("product", ""),
+                 float(row.get("unit_cost", 0)), row.get("notes", "")),
+            )
+            inserted += 1
+        except Exception as e:
+            errors.append(f"Fila {i+1}: {e}")
+    return {"inserted": inserted, "errors": errors}
+
+
 # ── Fixed Costs ─────────────────────────────────────────────────
 
 @router.get("/{store_id}/fixed-costs", response_class=HTMLResponse)
