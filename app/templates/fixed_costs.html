@@ -3,6 +3,14 @@
 {% block page_title %}Gastos Fijos{% endblock %}
 {% block page_subtitle %}Gastos mensuales recurrentes: plataformas, salarios, alquiler, etc.{% endblock %}
 {% block page_actions %}
+<a href="/admin/{{ store.id }}/fixed-costs/export.csv?token={{ token }}"
+   class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors">
+  <span class="material-symbols-outlined text-[16px]">download</span> Exportar CSV
+</a>
+<button onclick="document.getElementById('importModal').classList.remove('hidden')"
+        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors">
+  <span class="material-symbols-outlined text-[16px]">upload</span> Importar CSV
+</button>
 <button onclick="document.getElementById('addModal').classList.remove('hidden')"
         class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 transition-colors">
   <span class="material-symbols-outlined text-[16px]">add</span> Agregar
@@ -169,6 +177,102 @@
     </form>
   </div>
 </div>
+
+<!-- Modal Importar CSV -->
+<div id="importModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-slate-900">Importar Gastos Fijos desde CSV</h3>
+      <button onclick="document.getElementById('importModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+    <div class="px-6 py-5 space-y-4">
+      <div class="bg-slate-50 rounded-lg p-3 text-xs text-slate-500 font-mono">
+        Formato esperado: periodo,category,description,amount,recurring,tax_included,notes<br>
+        Ejemplo: 2026-03,Alquiler,Cocina,50000,1,1,
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Seleccionar archivo CSV</label>
+        <input type="file" id="fixedCsvFile" accept=".csv" onchange="previewFixedCsv(this)"
+               class="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+      </div>
+      <div id="fixedPreview" class="hidden">
+        <p class="text-xs font-medium text-slate-500 mb-2">Preview (<span id="fixedRowCount">0</span> filas)</p>
+        <div class="overflow-auto max-h-48 rounded-lg border border-slate-200">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 sticky top-0">
+              <tr><th class="px-3 py-2 text-left text-slate-400">Periodo</th><th class="px-3 py-2 text-left text-slate-400">Categoria</th><th class="px-3 py-2 text-left text-slate-400">Descripcion</th><th class="px-3 py-2 text-right text-slate-400">Monto</th><th class="px-3 py-2 text-center text-slate-400">Recurrente</th></tr>
+            </thead>
+            <tbody id="fixedPreviewBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <p id="fixedImportError" class="hidden text-xs text-red-500 mt-2"></p>
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+      <button onclick="document.getElementById('importModal').classList.add('hidden')" class="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors">Cancelar</button>
+      <button id="fixedImportBtn" onclick="submitFixedImport()" disabled
+              class="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+        Importar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let fixedCsvRows = [];
+
+function previewFixedCsv(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.trim().split('\n');
+    const header = lines[0].toLowerCase().split(',').map(h => h.trim());
+    fixedCsvRows = [];
+    const tbody = document.getElementById('fixedPreviewBody');
+    tbody.innerHTML = '';
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      if (cols.length < 4) continue;
+      const row = {};
+      header.forEach((h, idx) => row[h] = (cols[idx] || '').trim());
+      // Support both "category" and "categoria"
+      if (!row.category && row.categoria) row.category = row.categoria;
+      if (!row.description && row.descripcion) row.description = row.descripcion;
+      if (!row.amount && row.monto) row.amount = row.monto;
+      fixedCsvRows.push(row);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="px-3 py-1.5 font-mono text-slate-600">${row.periodo||''}</td><td class="px-3 py-1.5">${row.category||''}</td><td class="px-3 py-1.5 text-slate-700">${row.description||''}</td><td class="px-3 py-1.5 text-right font-mono">${Number(row.amount||0).toLocaleString('es-CL')}</td><td class="px-3 py-1.5 text-center">${row.recurring=='1'?'✓':''}</td>`;
+      tbody.appendChild(tr);
+    }
+    document.getElementById('fixedRowCount').textContent = fixedCsvRows.length;
+    document.getElementById('fixedPreview').classList.remove('hidden');
+    document.getElementById('fixedImportBtn').disabled = fixedCsvRows.length === 0;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function submitFixedImport() {
+  const btn = document.getElementById('fixedImportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Importando...';
+  const resp = await fetch('/admin/{{ store.id }}/fixed-costs/import?token={{ token }}', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ rows: fixedCsvRows }),
+  });
+  const data = await resp.json();
+  if (data.errors && data.errors.length) {
+    document.getElementById('fixedImportError').textContent = data.errors.join(' | ');
+    document.getElementById('fixedImportError').classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Importar';
+  } else {
+    document.getElementById('importModal').classList.add('hidden');
+    window.location.reload();
+  }
+}
+</script>
 
 <script>
 function openEditModal(id, periodo, category, description, amount, recurring, taxIncluded, notes) {

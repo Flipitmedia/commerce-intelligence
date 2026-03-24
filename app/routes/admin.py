@@ -2,11 +2,13 @@
 admin.py — Admin UI: super-admin, config, costos, gastos, facturas, sync
 Server-rendered con Jinja2. Forms POST para CRUD.
 """
+import csv
 import hashlib
+import io
 import secrets
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from app.database import query_one, query, execute
 from app.config import settings
@@ -252,6 +254,42 @@ def admin_fixed_costs_delete(store_id: str, item_id: int, token: str = ""):
     return RedirectResponse(f"/admin/{store_id}/fixed-costs?token={token}", status_code=303)
 
 
+@router.get("/{store_id}/fixed-costs/export.csv")
+def export_fixed_costs(store_id: str, token: str = ""):
+    get_store(store_id, token)
+    items = query("SELECT * FROM fixed_costs WHERE store_id = ? ORDER BY periodo, category", (store_id,))
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["periodo", "category", "description", "amount", "recurring", "tax_included", "notes"])
+    for item in items:
+        w.writerow([item["periodo"], item["category"], item["description"], item["amount"],
+                    item["recurring"], item["tax_included"], item["notes"] or ""])
+    return StreamingResponse(
+        io.BytesIO(out.getvalue().encode("utf-8-sig")),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=gastos_fijos_{store_id}.csv"},
+    )
+
+
+@router.post("/{store_id}/fixed-costs/import")
+async def import_fixed_costs(store_id: str, token: str = "", request: Request = None):
+    get_store(store_id, token)
+    data = await request.json()
+    rows = data.get("rows", [])
+    inserted, errors = 0, []
+    for i, row in enumerate(rows):
+        try:
+            execute(
+                "INSERT INTO fixed_costs (store_id, periodo, category, description, amount, recurring, tax_included, notes) VALUES (?,?,?,?,?,?,?,?)",
+                (store_id, row["periodo"], row["category"], row["description"],
+                 float(row["amount"]), int(row.get("recurring", 0)), int(row.get("tax_included", 1)), row.get("notes", "")),
+            )
+            inserted += 1
+        except Exception as e:
+            errors.append(f"Fila {i+1}: {e}")
+    return {"inserted": inserted, "errors": errors}
+
+
 # ── Variable Costs ──────────────────────────────────────────────
 
 @router.get("/{store_id}/variable-costs", response_class=HTMLResponse)
@@ -306,6 +344,42 @@ def admin_variable_costs_delete(store_id: str, item_id: int, token: str = ""):
     get_store(store_id, token)
     execute("DELETE FROM variable_costs WHERE id = ? AND store_id = ?", (item_id, store_id))
     return RedirectResponse(f"/admin/{store_id}/variable-costs?token={token}", status_code=303)
+
+
+@router.get("/{store_id}/variable-costs/export.csv")
+def export_variable_costs(store_id: str, token: str = ""):
+    get_store(store_id, token)
+    items = query("SELECT * FROM variable_costs WHERE store_id = ? ORDER BY date DESC", (store_id,))
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["fecha", "periodo", "category", "description", "amount", "tax_included", "notes"])
+    for item in items:
+        w.writerow([item["date"], item["periodo"], item["category"], item["description"],
+                    item["amount"], item["tax_included"], item["notes"] or ""])
+    return StreamingResponse(
+        io.BytesIO(out.getvalue().encode("utf-8-sig")),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=gastos_variables_{store_id}.csv"},
+    )
+
+
+@router.post("/{store_id}/variable-costs/import")
+async def import_variable_costs(store_id: str, token: str = "", request: Request = None):
+    get_store(store_id, token)
+    data = await request.json()
+    rows = data.get("rows", [])
+    inserted, errors = 0, []
+    for i, row in enumerate(rows):
+        try:
+            execute(
+                "INSERT INTO variable_costs (store_id, date, periodo, category, description, amount, tax_included, notes) VALUES (?,?,?,?,?,?,?,?)",
+                (store_id, row["fecha"], row["periodo"], row["category"], row["description"],
+                 float(row["amount"]), int(row.get("tax_included", 1)), row.get("notes", "")),
+            )
+            inserted += 1
+        except Exception as e:
+            errors.append(f"Fila {i+1}: {e}")
+    return {"inserted": inserted, "errors": errors}
 
 
 # ── Purchase Invoices ───────────────────────────────────────────
