@@ -1897,17 +1897,25 @@
       SECONDARY_KPI_INDICES.forEach(idx => {
         const kpi = kpis[idx];
         if (!kpi) return;
-        if (kpi.value == null && ['Break-even ROAS', 'Punto de Equilibrio'].includes(kpi.name)) return;
+        const isBreakevenKpi = ['Break-even ROAS', 'Punto de Equilibrio'].includes(kpi.name);
+        if (kpi.value == null && !isBreakevenKpi) return;
         const icon = KPI_ICONS[kpi.name] || 'monitoring';
 
         let statusDot = '';
-        if (kpi.status === 'OK') statusDot = '<div class="w-1.5 h-1.5 rounded-full bg-ci-primary-dark absolute top-2 right-2"></div>';
+        if (kpi.value == null && isBreakevenKpi) {
+          statusDot = '<div class="w-1.5 h-1.5 rounded-full bg-amber-500 absolute top-2 right-2"></div>';
+        } else if (kpi.status === 'OK') statusDot = '<div class="w-1.5 h-1.5 rounded-full bg-ci-primary-dark absolute top-2 right-2"></div>';
         else if (kpi.status === 'ALERTA') statusDot = '<div class="w-1.5 h-1.5 rounded-full bg-amber-500 absolute top-2 right-2"></div>';
         else if (kpi.status === 'CRITICO') statusDot = '<div class="w-1.5 h-1.5 rounded-full bg-ci-secondary absolute top-2 right-2"></div>';
 
         const w = WISDOM[kpi.name];
         const card = document.createElement('div');
         card.className = 'glass-card p-3 sm:p-4 rounded-xl relative hover:shadow-soft hover:border-ci-primary/30 transition-all';
+
+        const valueDisplay = (kpi.value == null && isBreakevenKpi)
+          ? '<div class="text-xs sm:text-sm font-semibold text-amber-400">No alcanzable</div><div class="text-[10px] text-[var(--ci-text-muted)] mt-0.5">MER insuficiente para cubrir costos</div>'
+          : `<div class="text-base sm:text-lg font-bold tabular-nums">${fmtKPI(kpi.name, kpi.value)}</div>${kpi.target ? `<div class="text-[10px] text-[var(--ci-text-muted)] mt-0.5">Meta: ${fmtKPI(kpi.name, kpi.target)}</div>` : ''}`;
+
         card.innerHTML = `
           ${statusDot}
           <div class="flex items-center gap-1.5 mb-1">
@@ -1915,8 +1923,7 @@
             <span class="text-[10px] sm:text-xs font-medium text-[var(--ci-text-light)] uppercase tracking-wide truncate">${kpi.name}</span>
             ${w ? `<button onclick="showTooltip('${kpi.name}', event)" class="info-trigger material-symbols-outlined text-[13px] text-[var(--ci-text-muted)] ml-auto shrink-0">info</button>` : ''}
           </div>
-          <div class="text-base sm:text-lg font-bold tabular-nums">${fmtKPI(kpi.name, kpi.value)}</div>
-          ${kpi.target ? `<div class="text-[10px] text-[var(--ci-text-muted)] mt-0.5">Meta: ${fmtKPI(kpi.name, kpi.target)}</div>` : ''}
+          ${valueDisplay}
         `;
         grid.appendChild(card);
       });
