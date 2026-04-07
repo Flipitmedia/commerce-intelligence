@@ -111,6 +111,14 @@ def build_kpis(pnl: dict, store: dict) -> list[dict]:
             "target": None,
             "status": "N/A" if pnl["breakeven_roas"] is None else "OK",
         },
+        {
+            "name": "Punto de Equilibrio",
+            "value": pnl["breakeven_ventas"],
+            "target": None,
+            "status": "N/A" if pnl["breakeven_ventas"] is None else (
+                "OK" if pnl["facturacion"] >= pnl["breakeven_ventas"] else "CRITICO"
+            ),
+        },
     ]
 
 

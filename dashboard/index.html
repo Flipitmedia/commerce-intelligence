@@ -696,7 +696,7 @@
     <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-10">
       <div id="secKpisContainer"></div>
     </section>
-    <div id="secKpisGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-10"></div>
+    <div id="secKpisGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 mb-10"></div>
 
     <!-- ═══════════ P&L + WISDOM GRID ═══════════ -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
@@ -1391,6 +1391,7 @@
       'Utilidad Operacional':      { icon: 'savings',        text: 'La ganancia real despues de pagar absolutamente todo: productos, ads, envios, comisiones, arriendos, etc.', formula: 'Margen Bruto − Total Gastos Operacionales' },
       'Utilidad Operacional %':    { icon: 'trending_up',    text: 'De cada $100 vendidos, cuanto queda como ganancia final? Es el indicador definitivo de rentabilidad.', formula: 'Utilidad Operacional / Ingresos Netos × 100' },
       'Break-even ROAS':           { icon: 'balance',        text: 'ROAS minimo que necesitas para no perder dinero. Si tu MER cae por debajo de este numero, estas operando a perdida.', formula: 'Facturacion / (Margen Bruto − Gastos no-ads)' },
+      'Punto de Equilibrio':       { icon: 'flag',           text: 'Facturacion minima necesaria para cubrir todos los costos al MER actual. Si vendes menos que esto, operas a perdida.', formula: '(Gastos Fijos + Variables) / (Margen% − Ads% − Comisiones%)' },
     };
 
     // v2.0.0: PNL_INFO actualizado con nueva estructura P&L
@@ -1422,6 +1423,7 @@
       'Gasto Ads (Meta)': 'campaign', 'MER (ROAS General)': 'ads_click', 'ROAS Meta': 'target',
       'CPA': 'person_add', 'Utilidad Operacional': 'savings', 'Utilidad Operacional %': 'trending_up',
       'Break-even ROAS': 'balance',
+      'Punto de Equilibrio': 'flag',
     };
 
     // ── KPI colored icon backgrounds ─────────────────────
@@ -1436,11 +1438,12 @@
       'CPA':                      { bg: 'bg-orange-500/10', text: 'text-orange-400' },
       'Utilidad Operacional %':   { bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
       'Break-even ROAS':          { bg: 'bg-purple-500/10', text: 'text-purple-400' },
+      'Punto de Equilibrio':      { bg: 'bg-indigo-500/10', text: 'text-indigo-400' },
     };
 
     // Hero KPIs (indices 0,1,2 of the kpis array): Ingresos Netos (idx 1), Utilidad Op (idx 7), Margen Bruto % (idx 2)
     const HERO_KPI_INDICES = [1, 7, 2];
-    const SECONDARY_KPI_INDICES = [0, 3, 4, 5, 6, 8, 9];
+    const SECONDARY_KPI_INDICES = [0, 3, 4, 5, 6, 8, 9, 10];
 
     // ── P&L narrative icons & colors ──────────────────────
     // v2.0.0: PNL_STEPS actualizado con nueva estructura P&L
@@ -1472,6 +1475,7 @@
 
     function fmtKPI(name, value) {
       if (name.includes('%')) return fmtPct(value);
+      if (name === 'Punto de Equilibrio') return fmtMoney(value);
       if (['MER', 'ROAS', 'Break-even'].some(k => name.includes(k))) return fmtNum(value);
       return fmtMoney(value);
     }
@@ -1901,7 +1905,7 @@
       SECONDARY_KPI_INDICES.forEach(idx => {
         const kpi = kpis[idx];
         if (!kpi) return;
-        if (kpi.value == null && kpi.name === 'Break-even ROAS') return; // Skip if no data
+        if (kpi.value == null && ['Break-even ROAS', 'Punto de Equilibrio'].includes(kpi.name)) return;
         const icon = KPI_ICONS[kpi.name] || 'monitoring';
 
         let statusDot = '';

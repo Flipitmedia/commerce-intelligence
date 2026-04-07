@@ -303,6 +303,15 @@ def compute_pnl(store: dict, periodo: str | None = None) -> dict:
 
     roas_meta = meta_revenue / gasto_ads if gasto_ads != 0 else 0
 
+    # Punto de Equilibrio en Ventas (facturacion necesaria para utilidad_op = 0)
+    # Formula: F = (GF + GV) / (mb%/(1+tax) - 1/MER - com_pas - com_shop)
+    breakeven_ventas = None
+    if margen_bruto_pct is not None and margen_bruto_pct > 0:
+        ads_ratio = (1 / mer) if mer > 0 else 0
+        denom = margen_bruto_pct / (1 + tax) - ads_ratio - store["comision_pasarela"] - store["comision_shopify"]
+        if denom > 0 and (gastos_fijos + gastos_variables) > 0:
+            breakeven_ventas = (gastos_fijos + gastos_variables) / denom
+
     # ══════════════════════════════════════════════════════════════
     # SECCION 6: ANALISIS ENVIOS E IVA
     # ══════════════════════════════════════════════════════════════
@@ -351,6 +360,7 @@ def compute_pnl(store: dict, periodo: str | None = None) -> dict:
         "breakeven_roas": round(breakeven_roas, 2) if breakeven_roas is not None else None,
         "ingresos_meta": round(meta_revenue),
         "roas_meta": round(roas_meta, 2),
+        "breakeven_ventas": round(breakeven_ventas) if breakeven_ventas is not None else None,
 
         # Seccion 6: Analisis Envios e IVA
         "total_cobrado": round(total_cobrado),
