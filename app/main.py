@@ -15,6 +15,21 @@ app = FastAPI(
 )
 
 
+def _update_periodo_activo():
+    """Actualiza periodo_activo de todas las tiendas al mes actual."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from app.database import query, execute
+
+    now = datetime.now(ZoneInfo("America/Santiago"))
+    periodo_actual = now.strftime("%Y-%m")
+    stores = query("SELECT id, periodo_activo FROM stores")
+    for store in stores:
+        if store["periodo_activo"] != periodo_actual:
+            execute("UPDATE stores SET periodo_activo = ? WHERE id = ?", (periodo_actual, store["id"]))
+            print(f"  Periodo activo actualizado: {store['id']} {store['periodo_activo']} → {periodo_actual}")
+
+
 def _run_auto_sync():
     """Sync automatico de todas las tiendas (periodo activo)."""
     from app.database import query
@@ -69,6 +84,7 @@ def _schedule_auto_sync():
 
         print(f"Auto-sync iniciando ({datetime.now(tz).strftime('%H:%M')} Chile)...")
         try:
+            _update_periodo_activo()
             _run_auto_sync()
             print("Auto-sync completado.")
         except Exception as e:
@@ -78,6 +94,7 @@ def _schedule_auto_sync():
 @app.on_event("startup")
 def startup():
     init_db()
+    _update_periodo_activo()
     # Iniciar scheduler de auto-sync en background thread
     t = threading.Thread(target=_schedule_auto_sync, daemon=True)
     t.start()
