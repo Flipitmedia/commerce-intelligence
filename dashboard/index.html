@@ -514,21 +514,12 @@
   <div id="setupScreen" class="hidden fixed inset-0 bg-[var(--ci-bg)] z-[200] flex items-center justify-center p-4">
     <div class="glass-card rounded-2xl p-8 sm:p-10 max-w-md w-full text-center">
       <div class="size-16 bg-[#0d1117] text-ci-primary rounded-2xl flex items-center justify-center shadow-soft mx-auto mb-6">
-        <span class="material-symbols-outlined text-3xl icon-filled">insights</span>
+        <span class="material-symbols-outlined text-3xl icon-filled">lock</span>
       </div>
       <h1 class="text-2xl font-bold mb-2">Commerce Intelligence</h1>
-      <p class="text-[var(--ci-text-light)] text-sm mb-6">Conecta tu spreadsheet para visualizar tus datos financieros en tiempo real.</p>
-      <div class="text-left mb-3">
-        <label for="setupStoreName" class="block text-sm font-medium text-[var(--ci-text-light)] mb-1.5">Nombre de la tienda</label>
-        <input id="setupStoreName" type="text" placeholder="Ej: MicoVitae, LaliGoods..." class="w-full px-4 py-2.5 rounded-xl border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] text-[var(--ci-text)] text-sm focus:ring-2 focus:ring-ci-primary focus:border-transparent outline-none transition">
-      </div>
-      <div class="text-left mb-4">
-        <label for="setupApiUrl" class="block text-sm font-medium text-[var(--ci-text-light)] mb-1.5">Web App URL</label>
-        <input id="setupApiUrl" type="url" placeholder="https://script.google.com/macros/s/..." class="w-full px-4 py-2.5 rounded-xl border border-[var(--ci-border)] bg-[var(--ci-bg-alt)] text-[var(--ci-text)] text-sm focus:ring-2 focus:ring-ci-primary focus:border-transparent outline-none transition">
-        <p id="setupError" class="hidden text-ci-secondary text-xs mt-1.5">URL no valida. Debe ser una URL de script.google.com</p>
-      </div>
-      <button onclick="handleSetupConnect()" class="w-full bg-ci-primary hover:opacity-90 text-white font-bold py-2.5 px-6 rounded-xl transition text-sm">Conectar</button>
-      <p class="text-xs text-[var(--ci-text-muted)] mt-4 leading-relaxed">Pega la URL de tu Google Apps Script publicado como Web App. Solo se aceptan URLs de <strong>script.google.com</strong>.</p>
+      <p class="text-[var(--ci-text-light)] text-sm mb-6">Este dashboard requiere acceso autenticado. Ingresa desde el panel de administracion para ver tus datos.</p>
+      <a href="/admin/" class="block w-full bg-ci-primary hover:opacity-90 text-white font-bold py-2.5 px-6 rounded-xl transition text-sm no-underline">Ir al panel de administracion</a>
+      <p class="text-xs text-[var(--ci-text-muted)] mt-4 leading-relaxed">Si ya tienes acceso, usa el enlace del dashboard desde la pagina de tiendas.</p>
     </div>
   </div>
 
