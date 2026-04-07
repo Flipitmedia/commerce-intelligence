@@ -420,5 +420,7 @@ def compute_historico(store: dict, periodos: list[str] | None = None) -> list[di
             "mer": pnl["mer"],
             "roasMeta": pnl["roas_meta"],
             "cpa": pnl["cpa"],
+            "breakevenRoas": pnl["breakeven_roas"],
+            "breakevenVentas": pnl["breakeven_ventas"],
         })
     return result
